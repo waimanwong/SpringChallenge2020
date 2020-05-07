@@ -1,16 +1,11 @@
 ﻿using System.Collections.Generic;
 
-public class Cell
+public class Cell: Position
 {
-    public readonly int x, y;
-
     public readonly List<Cell> Neighbors;
 
-    public Cell(int x, int y)
+    public Cell(int x, int y): base(x,y)
     {
-        this.x = x;
-        this.y = y;
-
         Neighbors = new List<Cell>();
     }
 

@@ -17,6 +17,30 @@ public class Map
         ComputeNeighborCells();
     }
 
+    public List<Cell> GetNeighbors(Position position)
+    {
+        var currentCell = _cells[(position.x, position.y)];
+
+        return currentCell.Neighbors;
+    }
+
+    public void Debug()
+    {
+        var row = new StringBuilder();
+
+        for (int y = 0; y < _height; y++)
+        {
+            row.Clear();
+            for (int x = 0; x < _width; x++)
+            {
+                if (_cells.ContainsKey((x, y)))
+                    row.Append(' ');
+                else
+                    row.Append('#');
+            }
+            Player.Debug(row.ToString());
+        }
+    }
     private void ExtractCells(List<string> rows)
     {
         for (int y = 0; y < rows.Count; y++)
@@ -69,21 +93,4 @@ public class Map
         }
     }
 
-    public void Debug()
-    {
-        var row = new StringBuilder();
-        
-        for(int y=0; y < _height; y++ )
-        {
-            row.Clear();
-            for(int x = 0; x < _width; x++)
-            {
-                if (_cells.ContainsKey((x, y)))
-                    row.Append(' ');
-                else
-                    row.Append('#');
-            }
-            Player.Debug(row.ToString());
-        }
-    }
 }
