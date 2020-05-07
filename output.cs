@@ -1,9 +1,9 @@
-using System;
 using System.Collections.Generic;
 using System.Text;
+using System;
 
 
- // LastEdited: 07/05/2020 23:35 
+ // LastEdited: 07/05/2020 23:36 
 
 
 
@@ -140,7 +140,7 @@ public class Player
         }
 
         Map map = new Map(width, height, rows);
-        map.Debug();
+        //map.Debug();
 
         Debug("Game loop");
         // game loop
