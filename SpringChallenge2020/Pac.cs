@@ -15,4 +15,21 @@
         this.speedTurnsLeft = speedTurnsLeft;
         this.abilityCooldown = abilityCooldown;
     }
+
+    public void Move(int x, int y)
+    {
+        this.x = x;
+        this.y = y;
+    }
+
+    public Pac Clone()
+    {
+        return new Pac(this.pacId,
+                        this.mine,
+                        this.x,
+                        this.y,
+                        this.typeId,
+                        this.speedTurnsLeft,
+                        this.abilityCooldown);
+    }
 }

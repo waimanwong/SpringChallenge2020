@@ -1,14 +1,15 @@
 using System.Collections.Generic;
+using System;
 using System.Linq;
 using System.Text;
-using System;
+using System.Runtime.Serialization;
 using System.Collections;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using System.ComponentModel;
 
 
- // LastEdited: 08/05/2020 0:26 
+ // LastEdited: 08/05/2020 12:01 
 
 
 
@@ -27,11 +28,12 @@ public class Cell: Position
     }
 }
 
+
+
 public class GameAI
 {
     private readonly Map map;
     private readonly GameState gameState;
-
 
     public GameAI(Map map, GameState gameState)
     {
@@ -39,27 +41,61 @@ public class GameAI
         this.gameState = gameState;
     }
 
-    public string ComputeAction()
+    public void ComputeMoves()
     {
-        var myPac = gameState.myPacs.Single();
+        var myPacs = gameState.myPacs.ToList();
+        var pellets = gameState.visiblePellets.Values.ToList();
 
-        var targetPellet = gameState.visiblePellets
-            .OrderByDescending(p => p.value)
-            .ThenBy(pellet => pellet.DistanceTo(myPac, this.map))
-            .First();
+        var random = new Random();
+        foreach (var pac in myPacs)
+        {
+            if (GameState.CurrentMoves.TryGetValue(pac.pacId, out var existingMove))
+            {
+                // Check pellet is still here
+                if (gameState.visiblePellets.ContainsKey(existingMove.Coord) == false)
+                {
+                    //assign a new move
+                    AssignMoveToPac(pellets, random, pac);
+                }
+            }
+            else
+            {
+                //Assign a move to this pac
+                AssignMoveToPac(pellets, random, pac);
+            }
 
-        return $"MOVE {myPac.pacId.ToString()} {targetPellet.x.ToString()} {targetPellet.y.ToString()}";
+        }
+    }
+
+    private static void AssignMoveToPac(List<Pellet> pellets, Random random, Pac pac)
+    {
+        var randomPellet = pellets[random.Next(pellets.Count)];
+        var move = new Move(pac.pacId, randomPellet.x, randomPellet.y);
+
+        GameState.CurrentMoves[pac.pacId] = move;
+
+        pellets.Remove(randomPellet);
     }
 }
 
 public class GameState
 {
-    private readonly int myScore, opponentScore;
+    public static Dictionary<int, Move> CurrentMoves = 
+        new Dictionary<int, Move>();
+
+    public static string GetMoves()
+    {
+        return string.Join('|',
+            CurrentMoves.Values.Select(m => m.ToString()));
+           
+    }
+
+    public int myScore, opponentScore;
 
     public readonly List<Pac> myPacs;
     public readonly List<Pac> enemyPacs;
 
-    public readonly List<Pellet> visiblePellets;
+    public readonly Dictionary<(int,int),Pellet> visiblePellets;
 
     public GameState(int myScore, int opponentScore, List<Pac> visiblePacs, List<Pellet> visiblePellets)
     {
@@ -81,8 +117,11 @@ public class GameState
             }
         }
 
-        this.visiblePellets = visiblePellets;
+        this.visiblePellets = visiblePellets.ToDictionary(
+            keySelector: pellet => pellet.Coord,
+            elementSelector:  pellet => pellet);
     }
+
 }
 
 public class Map
@@ -178,6 +217,28 @@ public class Map
     }
 
 }
+
+public class Move
+{
+    public bool isMine;
+    public int pacId;
+    public int x;
+    public int y;
+
+    public Move(int pacId, int x, int y)
+    {
+        this.pacId = pacId;
+        this.x = x;
+        this.y = y;
+    }
+
+    public (int, int) Coord => (x, y);
+
+    public override string ToString()
+    {
+        return $"MOVE {pacId.ToString()} {x.ToString()} {y.ToString()}";
+    }
+}
 public class Pac: Position
 {
     public readonly int pacId;
@@ -195,6 +256,23 @@ public class Pac: Position
         this.speedTurnsLeft = speedTurnsLeft;
         this.abilityCooldown = abilityCooldown;
     }
+
+    public void Move(int x, int y)
+    {
+        this.x = x;
+        this.y = y;
+    }
+
+    public Pac Clone()
+    {
+        return new Pac(this.pacId,
+                        this.mine,
+                        this.x,
+                        this.y,
+                        this.typeId,
+                        this.speedTurnsLeft,
+                        this.abilityCooldown);
+    }
 }
 public class Pellet: Position
 {
@@ -208,8 +286,8 @@ public class Pellet: Position
 
 public abstract class Position
 {
-    public readonly int x; 
-    public readonly int y;
+    public int x; 
+    public int y;
 
     protected Position (int x, int y)
     {
@@ -327,10 +405,9 @@ public class Player
             // To debug: Console.Error.WriteLine("Debug messages...");
 
             var gameAI = new GameAI(map, gameState);
+            gameAI.ComputeMoves();
 
-            var action = gameAI.ComputeAction();
-
-            Console.WriteLine(action); // MOVE <pacId> <x> <y>
+            Console.WriteLine(GameState.GetMoves()); // MOVE <pacId> <x> <y>
 
         }
     }

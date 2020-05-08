@@ -6,8 +6,8 @@ using System.Runtime.CompilerServices;
 
 public abstract class Position
 {
-    public readonly int x; 
-    public readonly int y;
+    public int x; 
+    public int y;
 
     protected Position (int x, int y)
     {

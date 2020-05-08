@@ -1,13 +1,24 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 public class GameState
 {
-    private readonly int myScore, opponentScore;
+    public static Dictionary<int, Move> CurrentMoves = 
+        new Dictionary<int, Move>();
+
+    public static string GetMoves()
+    {
+        return string.Join('|',
+            CurrentMoves.Values.Select(m => m.ToString()));
+           
+    }
+
+    public int myScore, opponentScore;
 
     public readonly List<Pac> myPacs;
     public readonly List<Pac> enemyPacs;
 
-    public readonly List<Pellet> visiblePellets;
+    public readonly Dictionary<(int,int),Pellet> visiblePellets;
 
     public GameState(int myScore, int opponentScore, List<Pac> visiblePacs, List<Pellet> visiblePellets)
     {
@@ -29,6 +40,9 @@ public class GameState
             }
         }
 
-        this.visiblePellets = visiblePellets;
+        this.visiblePellets = visiblePellets.ToDictionary(
+            keySelector: pellet => pellet.Coord,
+            elementSelector:  pellet => pellet);
     }
+
 }

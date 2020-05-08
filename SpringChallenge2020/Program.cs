@@ -73,10 +73,9 @@ public class Player
             // To debug: Console.Error.WriteLine("Debug messages...");
 
             var gameAI = new GameAI(map, gameState);
+            gameAI.ComputeMoves();
 
-            var action = gameAI.ComputeAction();
-
-            Console.WriteLine(action); // MOVE <pacId> <x> <y>
+            Console.WriteLine(GameState.GetMoves()); // MOVE <pacId> <x> <y>
 
         }
     }
