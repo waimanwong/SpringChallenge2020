@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 
 /**
  * Grab the pellets as fast as you can!
@@ -31,7 +32,9 @@ public class Player
        
         // game loop
         while (true)
-        {   
+        {
+            var watch = Stopwatch.StartNew();
+
             inputs = Console.ReadLine().Split(' ');
             int myScore = int.Parse(inputs[0]);
             int opponentScore = int.Parse(inputs[1]);
@@ -75,7 +78,7 @@ public class Player
             var gameAI = new GameAI(map, gameState);
             gameAI.ComputeMoves();
 
-            Console.WriteLine(GameState.GetMoves()); // MOVE <pacId> <x> <y>
+            Console.WriteLine($"{GameState.GetMoves()} {watch.ElapsedMilliseconds.ToString()} ms"); // MOVE <pacId> <x> <y>
 
         }
     }
