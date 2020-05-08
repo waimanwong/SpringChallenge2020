@@ -1,4 +1,6 @@
-﻿public class Pac: Position
+﻿using System;
+
+public class Pac: Position
 {
     public readonly int pacId;
     public readonly bool mine;
@@ -32,4 +34,58 @@
                         this.speedTurnsLeft,
                         this.abilityCooldown);
     }
+
+    public const string ROCK = "ROCK";
+    public const string PAPER = "PAPER";
+    public const string SCISSORS = "SCISSORS";
+
+    public int Compare(Pac enemyPac)
+    {
+        var myType = this.typeId;
+        var enemyType = enemyPac.typeId;
+
+        switch(myType)
+        {
+            case ROCK:
+                switch(enemyType)
+                {
+                    case ROCK:
+                        return 0;
+                    case PAPER:
+                        return -1;
+                    case SCISSORS:
+                        return 1;
+                }
+                break;
+
+            case "PAPER":
+                switch (enemyType)
+                {
+                    case ROCK:
+                        return 1;
+                    case PAPER:
+                        return 0;
+                    case SCISSORS:
+                        return -1;
+                }
+                break;
+
+            case "SCISSORS":
+                switch (enemyType)
+                {
+                    case ROCK:
+                        return -1;
+                    case PAPER:
+                        return 1;
+                    case SCISSORS:
+                        return 0;
+                }
+                break;
+        }
+
+        throw new Exception();
+    }
+
+   
+
 }
