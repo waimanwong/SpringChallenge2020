@@ -33,12 +33,13 @@ public class Player
         // game loop
         while (true)
         {
-            var watch = Stopwatch.StartNew();
-
             inputs = Console.ReadLine().Split(' ');
+
+            var watch = Stopwatch.StartNew();
+            
             int myScore = int.Parse(inputs[0]);
             int opponentScore = int.Parse(inputs[1]);
-
+            
             int visiblePacCount = int.Parse(Console.ReadLine()); // all your pacs and enemy pacs in sight
             var pacs = new List<Pac>(visiblePacCount);
             for (int i = 0; i < visiblePacCount; i++)
@@ -57,7 +58,6 @@ public class Player
                 pacs.Add(new Pac(pacId, mine, x, y, typeId, speedTurnsLeft, abilityCooldown));
             }
 
-
             int visiblePelletCount = int.Parse(Console.ReadLine()); // all pellets in sight
             var pellets = new List<Pellet>(visiblePelletCount);
             for (int i = 0; i < visiblePelletCount; i++)
@@ -70,15 +70,15 @@ public class Player
                 pellets.Add(new Pellet(x, y, value));
             }
 
-            var gameState = new GameState(myScore, opponentScore, pacs, pellets);
+            GameState.SetState(myScore, opponentScore, pacs, pellets);
 
             // Write an action using Console.WriteLine()
             // To debug: Console.Error.WriteLine("Debug messages...");
 
-            var gameAI = new GameAI(map, gameState);
+            var gameAI = new GameAI(map);
             gameAI.ComputeMoves();
 
-            Console.WriteLine($"{GameState.GetMoves()} {watch.ElapsedMilliseconds.ToString()} ms"); // MOVE <pacId> <x> <y>
+            Console.WriteLine($"{GameState.GetMoves()} {watch.ElapsedMilliseconds.ToString()}"); // MOVE <pacId> <x> <y>
 
         }
     }

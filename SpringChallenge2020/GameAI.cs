@@ -1,53 +1,63 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-
-
 
 public class GameAI
 {
     private readonly Map map;
-    private readonly GameState gameState;
 
-    public GameAI(Map map, GameState gameState)
+    public GameAI(Map map)
     {
         this.map = map;
-        this.gameState = gameState;
     }
 
     public void ComputeMoves()
     {
-        var myPacs = gameState.myPacs.ToList();
-        var pellets = gameState.visiblePellets.Values.ToList();
-
+        var myPacs = GameState.myPacs.ToList();
         var random = new Random();
-        foreach (var pac in myPacs)
+
+        foreach (var kvp in myPacs)
         {
-            if (GameState.CurrentMoves.TryGetValue(pac.pacId, out var existingMove))
+            var pacId = kvp.Key;
+            var pac = kvp.Value;
+
+            if(GameState.MyPacsDidNotMove.Contains(pacId))
             {
-                // Check pellet is still here
-                if (gameState.visiblePellets.ContainsKey(existingMove.Coord) == false)
+                //my pac is stuck, remove current move
+                GameState.CurrentMoves.Remove(pacId);
+            }
+
+            if (GameState.CurrentMoves.TryGetValue(pacId, out var existingMove))
+            {
+                // Check pac is at destination
+                if (pac.x == existingMove.x && pac.y == existingMove.y)
                 {
                     //assign a new move
-                    AssignMoveToPac(pellets, random, pac);
+                    AssignMoveToPac(random, pac);
                 }
             }
             else
             {
                 //Assign a move to this pac
-                AssignMoveToPac(pellets, random, pac);
+                AssignMoveToPac(random, pac);
             }
+        }
 
+        foreach (var kvp in GameState.CurrentMoves.ToArray())
+        {
+            if (myPacs.Any(p => p.Key == kvp.Key) == false)
+            {
+                //pac died: remove move
+                GameState.CurrentMoves.Remove(kvp.Key);
+            }
         }
     }
 
-    private static void AssignMoveToPac(List<Pellet> pellets, Random random, Pac pac)
+    private void AssignMoveToPac(Random random, Pac pac)
     {
-        var randomPellet = pellets[random.Next(pellets.Count)];
-        var move = new Move(pac.pacId, randomPellet.x, randomPellet.y);
+        var randomCell = this.map.GetRandomCell(random);
+
+        var move = new Move(pac.pacId, randomCell.x, randomCell.y);
 
         GameState.CurrentMoves[pac.pacId] = move;
-
-        pellets.Remove(randomPellet);
     }
 }

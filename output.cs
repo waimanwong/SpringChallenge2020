@@ -10,7 +10,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 
 
- // LastEdited: 08/05/2020 12:14 
+ // LastEdited: 08/05/2020 13:53 
 
 
 
@@ -29,60 +29,79 @@ public class Cell: Position
     }
 }
 
-
-
 public class GameAI
 {
     private readonly Map map;
-    private readonly GameState gameState;
 
-    public GameAI(Map map, GameState gameState)
+    public GameAI(Map map)
     {
         this.map = map;
-        this.gameState = gameState;
     }
 
     public void ComputeMoves()
     {
-        var myPacs = gameState.myPacs.ToList();
-        var pellets = gameState.visiblePellets.Values.ToList();
-
+        var myPacs = GameState.myPacs.ToList();
         var random = new Random();
-        foreach (var pac in myPacs)
+
+        foreach (var kvp in myPacs)
         {
-            if (GameState.CurrentMoves.TryGetValue(pac.pacId, out var existingMove))
+            var pacId = kvp.Key;
+            var pac = kvp.Value;
+
+            if(GameState.MyPacsDidNotMove.Contains(pacId))
             {
-                // Check pellet is still here
-                if (gameState.visiblePellets.ContainsKey(existingMove.Coord) == false)
+                //my pac is stuck, remove current move
+                GameState.CurrentMoves.Remove(pacId);
+            }
+
+            if (GameState.CurrentMoves.TryGetValue(pacId, out var existingMove))
+            {
+                // Check pac is at destination
+                if (pac.x == existingMove.x && pac.y == existingMove.y)
                 {
                     //assign a new move
-                    AssignMoveToPac(pellets, random, pac);
+                    AssignMoveToPac(random, pac);
                 }
             }
             else
             {
                 //Assign a move to this pac
-                AssignMoveToPac(pellets, random, pac);
+                AssignMoveToPac(random, pac);
             }
+        }
 
+        foreach (var kvp in GameState.CurrentMoves.ToArray())
+        {
+            if (myPacs.Any(p => p.Key == kvp.Key) == false)
+            {
+                //pac died: remove move
+                GameState.CurrentMoves.Remove(kvp.Key);
+            }
         }
     }
 
-    private static void AssignMoveToPac(List<Pellet> pellets, Random random, Pac pac)
+    private void AssignMoveToPac(Random random, Pac pac)
     {
-        var randomPellet = pellets[random.Next(pellets.Count)];
-        var move = new Move(pac.pacId, randomPellet.x, randomPellet.y);
+        var randomCell = this.map.GetRandomCell(random);
+
+        var move = new Move(pac.pacId, randomCell.x, randomCell.y);
 
         GameState.CurrentMoves[pac.pacId] = move;
-
-        pellets.Remove(randomPellet);
     }
 }
 
-public class GameState
+public static class GameState
 {
-    public static Dictionary<int, Move> CurrentMoves = 
-        new Dictionary<int, Move>();
+    public static Dictionary<int, Move> CurrentMoves = new Dictionary<int, Move>();
+
+    public static Dictionary<int, Pac> myPacs;
+    public static Dictionary<int, Pac> enemyPacs;
+
+    public static int myScore, opponentScore;
+
+    public static Dictionary<(int, int), Pellet> visiblePellets;
+
+    public static HashSet<int> MyPacsDidNotMove;
 
     public static string GetMoves()
     {
@@ -91,34 +110,48 @@ public class GameState
            
     }
 
-    public int myScore, opponentScore;
-
-    public readonly List<Pac> myPacs;
-    public readonly List<Pac> enemyPacs;
-
-    public readonly Dictionary<(int,int),Pellet> visiblePellets;
-
-    public GameState(int myScore, int opponentScore, List<Pac> visiblePacs, List<Pellet> visiblePellets)
+    static GameState()
     {
-        this.myScore = myScore;
-        this.opponentScore = opponentScore;
+        myPacs = new Dictionary<int, Pac>();
+    }
 
-        this.myPacs = new List<Pac>(visiblePacs.Count);
-        this.enemyPacs = new List<Pac>(visiblePacs.Count);
+    public static void SetState(int myScore, int opponentScore, List<Pac> visiblePacs, List<Pellet> visiblePellets)
+    {
+        GameState.myScore = myScore;
+        GameState.opponentScore = opponentScore;
 
-        foreach(var pac in visiblePacs)
+        var newEnemyPacs = new Dictionary<int, Pac>();
+
+        GameState.MyPacsDidNotMove = new HashSet<int>();
+
+        foreach (var newVisiblePac in visiblePacs)
         {
-            if(pac.mine)
+            var pacId = newVisiblePac.pacId;
+
+            if(newVisiblePac.mine)
             {
-                myPacs.Add(pac);
+                if(myPacs.TryGetValue(pacId, out var currentPac))
+                {
+                    if(currentPac.x == newVisiblePac.x && currentPac.y == newVisiblePac.y)
+                    {
+                        GameState.MyPacsDidNotMove.Add(pacId);
+                    }
+                    myPacs[pacId] = newVisiblePac;
+                }
+                else
+                {
+                    myPacs[pacId] = newVisiblePac;
+                }
             }
             else
             {
-                enemyPacs.Add(pac);
+                newEnemyPacs[pacId] = newVisiblePac;
             }
         }
 
-        this.visiblePellets = visiblePellets.ToDictionary(
+        GameState.enemyPacs = newEnemyPacs;
+
+        GameState.visiblePellets = visiblePellets.ToDictionary(
             keySelector: pellet => pellet.Coord,
             elementSelector:  pellet => pellet);
     }
@@ -146,6 +179,13 @@ public class Map
         var currentCell = _cells[(position.x, position.y)];
 
         return currentCell.Neighbors;
+    }
+
+    public Cell GetRandomCell(Random random)
+    {
+        var randomIndex = random.Next(_cells.Count);
+
+        return _cells.Values.ElementAt(randomIndex);
     }
 
     public void Debug()
@@ -365,12 +405,13 @@ public class Player
         // game loop
         while (true)
         {
-            var watch = Stopwatch.StartNew();
-
             inputs = Console.ReadLine().Split(' ');
+
+            var watch = Stopwatch.StartNew();
+            
             int myScore = int.Parse(inputs[0]);
             int opponentScore = int.Parse(inputs[1]);
-
+            
             int visiblePacCount = int.Parse(Console.ReadLine()); // all your pacs and enemy pacs in sight
             var pacs = new List<Pac>(visiblePacCount);
             for (int i = 0; i < visiblePacCount; i++)
@@ -389,7 +430,6 @@ public class Player
                 pacs.Add(new Pac(pacId, mine, x, y, typeId, speedTurnsLeft, abilityCooldown));
             }
 
-
             int visiblePelletCount = int.Parse(Console.ReadLine()); // all pellets in sight
             var pellets = new List<Pellet>(visiblePelletCount);
             for (int i = 0; i < visiblePelletCount; i++)
@@ -402,15 +442,15 @@ public class Player
                 pellets.Add(new Pellet(x, y, value));
             }
 
-            var gameState = new GameState(myScore, opponentScore, pacs, pellets);
+            GameState.SetState(myScore, opponentScore, pacs, pellets);
 
             // Write an action using Console.WriteLine()
             // To debug: Console.Error.WriteLine("Debug messages...");
 
-            var gameAI = new GameAI(map, gameState);
+            var gameAI = new GameAI(map);
             gameAI.ComputeMoves();
 
-            Console.WriteLine($"{GameState.GetMoves()} {watch.ElapsedMilliseconds.ToString()} ms"); // MOVE <pacId> <x> <y>
+            Console.WriteLine($"{GameState.GetMoves()} {watch.ElapsedMilliseconds.ToString()}"); // MOVE <pacId> <x> <y>
 
         }
     }

@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 public class Map
@@ -22,6 +24,13 @@ public class Map
         var currentCell = _cells[(position.x, position.y)];
 
         return currentCell.Neighbors;
+    }
+
+    public Cell GetRandomCell(Random random)
+    {
+        var randomIndex = random.Next(_cells.Count);
+
+        return _cells.Values.ElementAt(randomIndex);
     }
 
     public void Debug()

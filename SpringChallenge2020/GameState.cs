@@ -1,10 +1,18 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-public class GameState
+public static class GameState
 {
-    public static Dictionary<int, Move> CurrentMoves = 
-        new Dictionary<int, Move>();
+    public static Dictionary<int, Move> CurrentMoves = new Dictionary<int, Move>();
+
+    public static Dictionary<int, Pac> myPacs;
+    public static Dictionary<int, Pac> enemyPacs;
+
+    public static int myScore, opponentScore;
+
+    public static Dictionary<(int, int), Pellet> visiblePellets;
+
+    public static HashSet<int> MyPacsDidNotMove;
 
     public static string GetMoves()
     {
@@ -13,34 +21,48 @@ public class GameState
            
     }
 
-    public int myScore, opponentScore;
-
-    public readonly List<Pac> myPacs;
-    public readonly List<Pac> enemyPacs;
-
-    public readonly Dictionary<(int,int),Pellet> visiblePellets;
-
-    public GameState(int myScore, int opponentScore, List<Pac> visiblePacs, List<Pellet> visiblePellets)
+    static GameState()
     {
-        this.myScore = myScore;
-        this.opponentScore = opponentScore;
+        myPacs = new Dictionary<int, Pac>();
+    }
 
-        this.myPacs = new List<Pac>(visiblePacs.Count);
-        this.enemyPacs = new List<Pac>(visiblePacs.Count);
+    public static void SetState(int myScore, int opponentScore, List<Pac> visiblePacs, List<Pellet> visiblePellets)
+    {
+        GameState.myScore = myScore;
+        GameState.opponentScore = opponentScore;
 
-        foreach(var pac in visiblePacs)
+        var newEnemyPacs = new Dictionary<int, Pac>();
+
+        GameState.MyPacsDidNotMove = new HashSet<int>();
+
+        foreach (var newVisiblePac in visiblePacs)
         {
-            if(pac.mine)
+            var pacId = newVisiblePac.pacId;
+
+            if(newVisiblePac.mine)
             {
-                myPacs.Add(pac);
+                if(myPacs.TryGetValue(pacId, out var currentPac))
+                {
+                    if(currentPac.x == newVisiblePac.x && currentPac.y == newVisiblePac.y)
+                    {
+                        GameState.MyPacsDidNotMove.Add(pacId);
+                    }
+                    myPacs[pacId] = newVisiblePac;
+                }
+                else
+                {
+                    myPacs[pacId] = newVisiblePac;
+                }
             }
             else
             {
-                enemyPacs.Add(pac);
+                newEnemyPacs[pacId] = newVisiblePac;
             }
         }
 
-        this.visiblePellets = visiblePellets.ToDictionary(
+        GameState.enemyPacs = newEnemyPacs;
+
+        GameState.visiblePellets = visiblePellets.ToDictionary(
             keySelector: pellet => pellet.Coord,
             elementSelector:  pellet => pellet);
     }
