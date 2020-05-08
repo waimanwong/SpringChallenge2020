@@ -17,7 +17,7 @@ public abstract class Position
 
     public (int, int) Coord => (x, y);
 
-    public int DistanceTo(Position other, Map map)
+    public int DistanceTo(Position other)
     {
         //BFS
         var visited = new HashSet<(int, int)>();
@@ -38,7 +38,7 @@ public abstract class Position
 
             visited.Add(currentPosition.Coord);
 
-            var neighbors = map.GetNeighbors(currentPosition);
+            var neighbors = Map.GetNeighbors(currentPosition);
 
             foreach(var neighborCell in neighbors)
             {

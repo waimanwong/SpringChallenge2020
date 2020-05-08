@@ -3,13 +3,6 @@ using System.Linq;
 
 public class GameAI
 {
-    private readonly Map map;
-
-    public GameAI(Map map)
-    {
-        this.map = map;
-    }
-
     public void ComputeMoves()
     {
         var myPacs = GameState.myPacs.ToList();
@@ -54,9 +47,9 @@ public class GameAI
 
     private void AssignMoveToPac(Random random, Pac pac)
     {
-        var randomCell = this.map.GetRandomCell(random);
+        var (x,y) = GameState.GetRandomCellToVisit(random);
 
-        var move = new Move(pac.pacId, randomCell.x, randomCell.y);
+        var move = new Move(pac.pacId, x, y);
 
         GameState.CurrentMoves[pac.pacId] = move;
     }

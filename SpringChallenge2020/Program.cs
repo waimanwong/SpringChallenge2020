@@ -28,7 +28,9 @@ public class Player
             rows.Add(row);
         }
 
-        var map = new Map(width, height, rows);
+        Map.Set(width, height, rows);
+
+        GameState.InitializeRemainingCellsToVisit();
        
         // game loop
         while (true)
@@ -41,10 +43,14 @@ public class Player
             int opponentScore = int.Parse(inputs[1]);
             
             int visiblePacCount = int.Parse(Console.ReadLine()); // all your pacs and enemy pacs in sight
-            var pacs = new List<Pac>(visiblePacCount);
+            
+            var enemyPacs = new Dictionary<int, Pac>(visiblePacCount);
+            var myPacs = new Dictionary<int, Pac>(visiblePacCount);
+
             for (int i = 0; i < visiblePacCount; i++)
             {
                 var pacState = Console.ReadLine();
+                Debug(pacState);
 
                 inputs = pacState.Split(' ');
                 int pacId = int.Parse(inputs[0]); // pac number (unique within a team)
@@ -55,14 +61,25 @@ public class Player
                 int speedTurnsLeft = int.Parse(inputs[5]); // unused in wood leagues
                 int abilityCooldown = int.Parse(inputs[6]); // unused in wood leagues
 
-                pacs.Add(new Pac(pacId, mine, x, y, typeId, speedTurnsLeft, abilityCooldown));
+                var pac = new Pac(pacId, mine, x, y, typeId, speedTurnsLeft, abilityCooldown);
+                
+                if (mine)
+                {
+                    myPacs.Add(pac.pacId, pac);
+                }
+                else
+                {
+                    enemyPacs.Add(pac.pacId, pac);
+                }
             }
 
             int visiblePelletCount = int.Parse(Console.ReadLine()); // all pellets in sight
             var pellets = new List<Pellet>(visiblePelletCount);
             for (int i = 0; i < visiblePelletCount; i++)
             {
-                inputs = Console.ReadLine().Split(' ');
+                var pellet = Console.ReadLine();
+                
+                inputs = pellet.Split(' ');
                 int x = int.Parse(inputs[0]);
                 int y = int.Parse(inputs[1]);
                 int value = int.Parse(inputs[2]); // amount of points this pellet is worth
@@ -70,12 +87,11 @@ public class Player
                 pellets.Add(new Pellet(x, y, value));
             }
 
-            GameState.SetState(myScore, opponentScore, pacs, pellets);
+            GameState.SetState(myScore, opponentScore, myPacs, enemyPacs, pellets);
 
-            // Write an action using Console.WriteLine()
-            // To debug: Console.Error.WriteLine("Debug messages...");
+            GameState.Debug();
 
-            var gameAI = new GameAI(map);
+            var gameAI = new GameAI();
             gameAI.ComputeMoves();
 
             Console.WriteLine($"{GameState.GetMoves()} {watch.ElapsedMilliseconds.ToString()}"); // MOVE <pacId> <x> <y>

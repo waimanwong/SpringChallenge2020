@@ -1,16 +1,16 @@
 using System.Collections.Generic;
 using System;
 using System.Linq;
+using System.Diagnostics;
 using System.Text;
 using System.Runtime.Serialization;
 using System.Collections;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using System.ComponentModel;
-using System.Diagnostics;
 
 
- // LastEdited: 08/05/2020 13:53 
+ // LastEdited: 08/05/2020 17:28 
 
 
 
@@ -31,13 +31,6 @@ public class Cell: Position
 
 public class GameAI
 {
-    private readonly Map map;
-
-    public GameAI(Map map)
-    {
-        this.map = map;
-    }
-
     public void ComputeMoves()
     {
         var myPacs = GameState.myPacs.ToList();
@@ -82,9 +75,9 @@ public class GameAI
 
     private void AssignMoveToPac(Random random, Pac pac)
     {
-        var randomCell = this.map.GetRandomCell(random);
+        var (x,y) = GameState.GetRandomCellToVisit(random);
 
-        var move = new Move(pac.pacId, randomCell.x, randomCell.y);
+        var move = new Move(pac.pacId, x, y);
 
         GameState.CurrentMoves[pac.pacId] = move;
     }
@@ -102,6 +95,7 @@ public static class GameState
     public static Dictionary<(int, int), Pellet> visiblePellets;
 
     public static HashSet<int> MyPacsDidNotMove;
+    public static HashSet<(int, int)> RemainingCellsToVisit;
 
     public static string GetMoves()
     {
@@ -115,7 +109,21 @@ public static class GameState
         myPacs = new Dictionary<int, Pac>();
     }
 
-    public static void SetState(int myScore, int opponentScore, List<Pac> visiblePacs, List<Pellet> visiblePellets)
+    public static void InitializeRemainingCellsToVisit()
+    {
+        RemainingCellsToVisit = Map.Cells.Keys.ToHashSet();
+    }
+
+    public static (int,int) GetRandomCellToVisit(Random random)
+    {
+        var randomIndex = random.Next(RemainingCellsToVisit.Count);
+
+        return RemainingCellsToVisit.ElementAt(randomIndex);
+    }
+
+    public static void SetState(int myScore, int opponentScore, 
+        Dictionary<int, Pac> myVisiblePacs, Dictionary<int, Pac> enemyVisiblePacs, 
+        List<Pellet> visiblePellets)
     {
         GameState.myScore = myScore;
         GameState.opponentScore = opponentScore;
@@ -124,88 +132,107 @@ public static class GameState
 
         GameState.MyPacsDidNotMove = new HashSet<int>();
 
-        foreach (var newVisiblePac in visiblePacs)
+        foreach (var kvp in myVisiblePacs)
         {
-            var pacId = newVisiblePac.pacId;
+            var pacId = kvp.Key;
+            var visiblePac = kvp.Value;
 
-            if(newVisiblePac.mine)
+            if (myPacs.TryGetValue(pacId, out var currentPac))
             {
-                if(myPacs.TryGetValue(pacId, out var currentPac))
+                if (currentPac.x == visiblePac.x && currentPac.y == visiblePac.y)
                 {
-                    if(currentPac.x == newVisiblePac.x && currentPac.y == newVisiblePac.y)
-                    {
-                        GameState.MyPacsDidNotMove.Add(pacId);
-                    }
-                    myPacs[pacId] = newVisiblePac;
-                }
-                else
-                {
-                    myPacs[pacId] = newVisiblePac;
+                    GameState.MyPacsDidNotMove.Add(pacId);
                 }
             }
-            else
-            {
-                newEnemyPacs[pacId] = newVisiblePac;
-            }
+
+            HasVisitedPosition(visiblePac);
         }
 
-        GameState.enemyPacs = newEnemyPacs;
+        GameState.myPacs = myVisiblePacs;
+        GameState.enemyPacs = myVisiblePacs;
 
         GameState.visiblePellets = visiblePellets.ToDictionary(
             keySelector: pellet => pellet.Coord,
             elementSelector:  pellet => pellet);
     }
 
-}
-
-public class Map
-{
-    private readonly int _width, _height;
-    private readonly Dictionary<(int, int), Cell> _cells;
-
-    public Map(int width, int height, List<string> rows)
+    private static void HasVisitedPosition(Pac visiblePac)
     {
-        _width = width;
-        _height = height;
+        var visitedCoord = (visiblePac.x, visiblePac.y);
 
-        _cells = new Dictionary<(int, int), Cell>();
-        
-        ExtractCells(rows);
-        ComputeNeighborCells();
+        if(RemainingCellsToVisit.Contains(visitedCoord))
+        {
+            RemainingCellsToVisit.Remove(visitedCoord);
+        }
     }
 
-    public List<Cell> GetNeighbors(Position position)
-    {
-        var currentCell = _cells[(position.x, position.y)];
-
-        return currentCell.Neighbors;
-    }
-
-    public Cell GetRandomCell(Random random)
-    {
-        var randomIndex = random.Next(_cells.Count);
-
-        return _cells.Values.ElementAt(randomIndex);
-    }
-
-    public void Debug()
+    public static void Debug()
     {
         var row = new StringBuilder();
+        var myPacs = GameState.myPacs.Values
+            .ToDictionary(keySelector: pac => (pac.x, pac.y), elementSelector: pac => pac);
+        var enemyPacs = GameState.enemyPacs.Values
+            .ToDictionary(keySelector: pac => (pac.x, pac.y), elementSelector: pac => pac);
 
-        for (int y = 0; y < _height; y++)
+
+        for (int y = 0; y < Map.Height; y++)
         {
             row.Clear();
-            for (int x = 0; x < _width; x++)
+            for (int x = 0; x < Map.Width; x++)
             {
-                if (_cells.ContainsKey((x, y)))
-                    row.Append(' ');
+                var coord = (x, y);
+                if (Map.Cells.ContainsKey(coord))
+                {
+                    if (visiblePellets.TryGetValue(coord, out var pellet))
+                    {
+                        row.Append(pellet.value == 1 ? 'o' : 'O');
+                    }
+                    else if(myPacs.TryGetValue(coord, out var myPac))
+                    {
+                        row.Append(myPac.pacId.ToString());
+                    }
+                    else if (enemyPacs.TryGetValue(coord, out var enemyPac))
+                    {
+                        row.Append('!');
+                    }
+                    else
+                    {
+                        row.Append(' ');
+                    }
+                }
                 else
                     row.Append('#');
             }
             Player.Debug(row.ToString());
         }
     }
-    private void ExtractCells(List<string> rows)
+
+}
+
+public static class Map
+{
+    public static int Width, Height;
+    public static Dictionary<(int, int), Cell> Cells;
+
+    public static void Set(int width, int height, List<string> rows)
+    {
+        Width = width;
+        Height = height;
+
+        Cells = new Dictionary<(int, int), Cell>();
+        
+        ExtractCells(rows);
+        ComputeNeighborCells();
+    }
+
+    public static List<Cell> GetNeighbors(Position position)
+    {
+        var currentCell = Cells[(position.x, position.y)];
+
+        return currentCell.Neighbors;
+    }
+
+    private static void ExtractCells(List<string> rows)
     {
         for (int y = 0; y < rows.Count; y++)
         {
@@ -214,43 +241,43 @@ public class Map
             {
                 if (row[x] == ' ')
                 {
-                    _cells.Add((x, y), new Cell(x, y));
+                    Cells.Add((x, y), new Cell(x, y));
                 }
             }
         }
     }
 
-    private void ComputeNeighborCells()
+    private static void ComputeNeighborCells()
     {
-        foreach(var cell in _cells.Values)
+        foreach(var cell in Cells.Values)
         {
             var cellX = cell.x;
             var cellY = cell.y;
             
             //west
-            var westX = (cellX - 1 + _width) % _width;
-            if(_cells.TryGetValue((westX, cellY), out Cell westCell))
+            var westX = (cellX - 1 + Width) % Width;
+            if(Cells.TryGetValue((westX, cellY), out Cell westCell))
             {
                 cell.Neighbors.Add(westCell);
             }
 
             //east
-            var eastX = (cellX + 1 + _width) % _width;
-            if (_cells.TryGetValue((eastX, cellY), out Cell eastCell))
+            var eastX = (cellX + 1 + Width) % Width;
+            if (Cells.TryGetValue((eastX, cellY), out Cell eastCell))
             {
                 cell.Neighbors.Add(eastCell);
             }
 
             //north
             var northY = (cellY - 1);
-            if (_cells.TryGetValue((cellX, northY), out Cell northCell))
+            if (Cells.TryGetValue((cellX, northY), out Cell northCell))
             {
                 cell.Neighbors.Add(northCell);
             }
 
             //south
             var southY = (cellY + 1);
-            if (_cells.TryGetValue((cellX, southY), out Cell southCell))
+            if (Cells.TryGetValue((cellX, southY), out Cell southCell))
             {
                 cell.Neighbors.Add(southCell);
             }
@@ -338,7 +365,7 @@ public abstract class Position
 
     public (int, int) Coord => (x, y);
 
-    public int DistanceTo(Position other, Map map)
+    public int DistanceTo(Position other)
     {
         //BFS
         var visited = new HashSet<(int, int)>();
@@ -359,7 +386,7 @@ public abstract class Position
 
             visited.Add(currentPosition.Coord);
 
-            var neighbors = map.GetNeighbors(currentPosition);
+            var neighbors = Map.GetNeighbors(currentPosition);
 
             foreach(var neighborCell in neighbors)
             {
@@ -400,7 +427,9 @@ public class Player
             rows.Add(row);
         }
 
-        var map = new Map(width, height, rows);
+        Map.Set(width, height, rows);
+
+        GameState.InitializeRemainingCellsToVisit();
        
         // game loop
         while (true)
@@ -413,10 +442,14 @@ public class Player
             int opponentScore = int.Parse(inputs[1]);
             
             int visiblePacCount = int.Parse(Console.ReadLine()); // all your pacs and enemy pacs in sight
-            var pacs = new List<Pac>(visiblePacCount);
+            
+            var enemyPacs = new Dictionary<int, Pac>(visiblePacCount);
+            var myPacs = new Dictionary<int, Pac>(visiblePacCount);
+
             for (int i = 0; i < visiblePacCount; i++)
             {
                 var pacState = Console.ReadLine();
+                Debug(pacState);
 
                 inputs = pacState.Split(' ');
                 int pacId = int.Parse(inputs[0]); // pac number (unique within a team)
@@ -427,14 +460,25 @@ public class Player
                 int speedTurnsLeft = int.Parse(inputs[5]); // unused in wood leagues
                 int abilityCooldown = int.Parse(inputs[6]); // unused in wood leagues
 
-                pacs.Add(new Pac(pacId, mine, x, y, typeId, speedTurnsLeft, abilityCooldown));
+                var pac = new Pac(pacId, mine, x, y, typeId, speedTurnsLeft, abilityCooldown);
+                
+                if (mine)
+                {
+                    myPacs.Add(pac.pacId, pac);
+                }
+                else
+                {
+                    enemyPacs.Add(pac.pacId, pac);
+                }
             }
 
             int visiblePelletCount = int.Parse(Console.ReadLine()); // all pellets in sight
             var pellets = new List<Pellet>(visiblePelletCount);
             for (int i = 0; i < visiblePelletCount; i++)
             {
-                inputs = Console.ReadLine().Split(' ');
+                var pellet = Console.ReadLine();
+                
+                inputs = pellet.Split(' ');
                 int x = int.Parse(inputs[0]);
                 int y = int.Parse(inputs[1]);
                 int value = int.Parse(inputs[2]); // amount of points this pellet is worth
@@ -442,12 +486,11 @@ public class Player
                 pellets.Add(new Pellet(x, y, value));
             }
 
-            GameState.SetState(myScore, opponentScore, pacs, pellets);
+            GameState.SetState(myScore, opponentScore, myPacs, enemyPacs, pellets);
 
-            // Write an action using Console.WriteLine()
-            // To debug: Console.Error.WriteLine("Debug messages...");
+            GameState.Debug();
 
-            var gameAI = new GameAI(map);
+            var gameAI = new GameAI();
             gameAI.ComputeMoves();
 
             Console.WriteLine($"{GameState.GetMoves()} {watch.ElapsedMilliseconds.ToString()}"); // MOVE <pacId> <x> <y>
