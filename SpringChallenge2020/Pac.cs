@@ -30,11 +30,14 @@ public class Pac: Position
         this.typeId = visiblePac.typeId;
         this.speedTurnsLeft = visiblePac.speedTurnsLeft;
         this.abilityCooldown = visiblePac.abilityCooldown;
+
+        if(currentAction.IsCompleted(this))
+        {
+            currentAction = null;
+        }
     }
 
     public bool HasAction => currentAction != null;
-
-    public bool ActionIsCompleted => currentAction.IsCompleted(this);
 
     public void AssignMoveAction(int x, int y)
     {

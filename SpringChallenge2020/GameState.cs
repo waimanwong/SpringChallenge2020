@@ -32,10 +32,11 @@ public static class GameState
         return RemainingCellsToVisit.ElementAt(randomIndex);
     }
 
-    public static void SetState(int myScore, int opponentScore, 
+    public static void SetState(
+        int myScore, int opponentScore, 
         Dictionary<int, Pac> myVisiblePacs, 
-        Dictionary<int, Pac> enemyVisiblePacs, 
-        List<Pellet> visiblePellets)
+        Dictionary<int, Pac> enemyVisiblePacs,
+        Dictionary<(int, int), Pellet> visiblePellets)
     {
         GameState.myScore = myScore;
         GameState.opponentScore = opponentScore;
@@ -54,19 +55,14 @@ public static class GameState
             else
             {
                 myPacs[pacId].UpdateState(visiblePac);
-                if(myPacs[pacId].ActionIsCompleted)
-                {
-                    myPacs[pacId].ClearAction();
-                }
+                
             }
 
             HasVisitedPosition(visiblePac);
         }
 
         GameState.enemyPacs = enemyVisiblePacs;
-        GameState.visiblePellets = visiblePellets.ToDictionary(
-            keySelector: pellet => pellet.Coord,
-            elementSelector: pellet => pellet);
+        GameState.visiblePellets = visiblePellets;
     }
 
     private static void RemoveMyDeadPacman(Dictionary<int, Pac> myVisiblePacs)

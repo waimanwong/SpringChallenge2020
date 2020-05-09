@@ -75,7 +75,7 @@ public class Player
             }
 
             int visiblePelletCount = int.Parse(Console.ReadLine()); // all pellets in sight
-            var pellets = new List<Pellet>(visiblePelletCount);
+            var pellets = new Dictionary<(int,int), Pellet>(visiblePelletCount);
             for (int i = 0; i < visiblePelletCount; i++)
             {
                 var pellet = Console.ReadLine();
@@ -85,7 +85,7 @@ public class Player
                 int y = int.Parse(inputs[1]);
                 int value = int.Parse(inputs[2]); // amount of points this pellet is worth
 
-                pellets.Add(new Pellet(x, y, value));
+                pellets.Add((x,y), new Pellet(x, y, value));
             }
 
             GameState.SetState(myScore, opponentScore, myPacs, enemyPacs, pellets);

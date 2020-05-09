@@ -10,7 +10,7 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 
 
- // LastEdited: 10/05/2020 0:12 
+ // LastEdited: 10/05/2020 0:20 
 
 
 
@@ -153,10 +153,11 @@ public static class GameState
         return RemainingCellsToVisit.ElementAt(randomIndex);
     }
 
-    public static void SetState(int myScore, int opponentScore, 
+    public static void SetState(
+        int myScore, int opponentScore, 
         Dictionary<int, Pac> myVisiblePacs, 
-        Dictionary<int, Pac> enemyVisiblePacs, 
-        List<Pellet> visiblePellets)
+        Dictionary<int, Pac> enemyVisiblePacs,
+        Dictionary<(int, int), Pellet> visiblePellets)
     {
         GameState.myScore = myScore;
         GameState.opponentScore = opponentScore;
@@ -175,19 +176,14 @@ public static class GameState
             else
             {
                 myPacs[pacId].UpdateState(visiblePac);
-                if(myPacs[pacId].ActionIsCompleted)
-                {
-                    myPacs[pacId].ClearAction();
-                }
+                
             }
 
             HasVisitedPosition(visiblePac);
         }
 
         GameState.enemyPacs = enemyVisiblePacs;
-        GameState.visiblePellets = visiblePellets.ToDictionary(
-            keySelector: pellet => pellet.Coord,
-            elementSelector: pellet => pellet);
+        GameState.visiblePellets = visiblePellets;
     }
 
     private static void RemoveMyDeadPacman(Dictionary<int, Pac> myVisiblePacs)
@@ -361,11 +357,14 @@ public class Pac: Position
         this.typeId = visiblePac.typeId;
         this.speedTurnsLeft = visiblePac.speedTurnsLeft;
         this.abilityCooldown = visiblePac.abilityCooldown;
+
+        if(currentAction.IsCompleted(this))
+        {
+            currentAction = null;
+        }
     }
 
     public bool HasAction => currentAction != null;
-
-    public bool ActionIsCompleted => currentAction.IsCompleted(this);
 
     public void AssignMoveAction(int x, int y)
     {
@@ -565,7 +564,7 @@ public class Player
             }
 
             int visiblePelletCount = int.Parse(Console.ReadLine()); // all pellets in sight
-            var pellets = new List<Pellet>(visiblePelletCount);
+            var pellets = new Dictionary<(int,int), Pellet>(visiblePelletCount);
             for (int i = 0; i < visiblePelletCount; i++)
             {
                 var pellet = Console.ReadLine();
@@ -575,7 +574,7 @@ public class Player
                 int y = int.Parse(inputs[1]);
                 int value = int.Parse(inputs[2]); // amount of points this pellet is worth
 
-                pellets.Add(new Pellet(x, y, value));
+                pellets.Add((x,y), new Pellet(x, y, value));
             }
 
             GameState.SetState(myScore, opponentScore, myPacs, enemyPacs, pellets);
