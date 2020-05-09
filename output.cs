@@ -10,7 +10,7 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 
 
- // LastEdited: 10/05/2020 0:24 
+ // LastEdited: 10/05/2020 0:51 
 
 
 
@@ -119,7 +119,7 @@ public class GameAI
             if (pac.HasAction == false)
             {
                 // Assign a move to this pac
-                Player.Debug("Assign a move to this pac");
+                Player.Debug($"Assign a move to this pac {pacId.ToString()}");
                 AssignMoveToPac(random, pac);
             }
         }
@@ -127,9 +127,19 @@ public class GameAI
 
     private void AssignMoveToPac(Random random, Pac pac)
     {
-        var (x,y) = GameState.GetRandomCellToVisit(random);
+        if(pac.bestDirectionForPellets != null)
+        {
+            var targetCell = Map
+                .Cells[pac.Coord]
+                .Neighbors[pac.bestDirectionForPellets.Value];
+            pac.AssignMoveAction(targetCell.x, targetCell.y);
+        }
+        else
+        {
+            var (x, y) = GameState.GetRandomCellToVisit(random);
 
-        pac.AssignMoveAction(x, y);
+            pac.AssignMoveAction(x, y);
+        }
     }
 }
 
@@ -347,7 +357,11 @@ public class Pac: Position
 
     private Action currentAction;
 
-    private Dictionary<(int, int), Pellet> visiblePellets = new Dictionary<(int, int), Pellet>();
+    private Dictionary<Direction, List<Pellet>> visiblePellets = new Dictionary<Direction, List<Pellet>>();
+
+    private Dictionary<Direction, int> possibleScores = new Dictionary<Direction, int>();
+
+    public Direction? bestDirectionForPellets;
 
     public Pac(int pacId, bool mine, int x, int y, string typeId, int speedTurnsLeft, int abilityCooldown): base(x,y)
     {
@@ -366,12 +380,49 @@ public class Pac: Position
         this.speedTurnsLeft = visiblePac.speedTurnsLeft;
         this.abilityCooldown = visiblePac.abilityCooldown;
 
-        if(currentAction.IsCompleted(this))
+        CheckCurrentActionCompletion();
+
+        SetVisiblePellets(visiblePellets);
+    }
+
+    private void CheckCurrentActionCompletion()
+    {
+        if (currentAction.IsCompleted(this))
         {
             this.currentAction = null;
         }
+    }
 
+    private void SetVisiblePellets(Dictionary<(int, int), Pellet> visiblePellets)
+    {
+        bestDirectionForPellets = null;
+        this.visiblePellets.Clear();
 
+        int bestScore = 0;
+
+        foreach (var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West })
+        {
+            var currentCell = Map.Cells[(this.x, this.y)];
+            var pellets = new List<Pellet>();
+
+            while (currentCell.Neighbors.TryGetValue(direction, out var nextCell))
+            {
+                currentCell = nextCell;
+                if (visiblePellets.TryGetValue(currentCell.Coord, out var visiblePellet))
+                {
+                    pellets.Add(visiblePellet);
+                }
+            }
+
+            this.visiblePellets[direction] = pellets;
+            this.possibleScores[direction] = pellets.Sum(p => p.value);
+
+            if(possibleScores[direction] > bestScore)
+            {
+                bestScore = possibleScores[direction];
+                bestDirectionForPellets = direction;
+            }
+        }
     }
 
     public bool HasAction => currentAction != null;
@@ -446,6 +497,8 @@ public class Pac: Position
 public class Pellet: Position
 {
     public readonly int value;
+
+    public bool IsSuperPellet => value == 10;
 
     public Pellet(int x, int y, int value): base(x,y)
     {

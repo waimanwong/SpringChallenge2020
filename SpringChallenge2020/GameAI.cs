@@ -16,7 +16,7 @@ public class GameAI
             if (pac.HasAction == false)
             {
                 // Assign a move to this pac
-                Player.Debug("Assign a move to this pac");
+                Player.Debug($"Assign a move to this pac {pacId.ToString()}");
                 AssignMoveToPac(random, pac);
             }
         }
@@ -24,8 +24,18 @@ public class GameAI
 
     private void AssignMoveToPac(Random random, Pac pac)
     {
-        var (x,y) = GameState.GetRandomCellToVisit(random);
+        if(pac.bestDirectionForPellets != null)
+        {
+            var targetCell = Map
+                .Cells[pac.Coord]
+                .Neighbors[pac.bestDirectionForPellets.Value];
+            pac.AssignMoveAction(targetCell.x, targetCell.y);
+        }
+        else
+        {
+            var (x, y) = GameState.GetRandomCellToVisit(random);
 
-        pac.AssignMoveAction(x, y);
+            pac.AssignMoveAction(x, y);
+        }
     }
 }
