@@ -23,7 +23,7 @@ public static class Map
     {
         var currentCell = Cells[(position.x, position.y)];
 
-        return currentCell.Neighbors;
+        return currentCell.Neighbors.Values.ToList();
     }
 
     private static void ExtractCells(List<string> rows)
@@ -52,28 +52,28 @@ public static class Map
             var westX = (cellX - 1 + Width) % Width;
             if(Cells.TryGetValue((westX, cellY), out Cell westCell))
             {
-                cell.Neighbors.Add(westCell);
+                cell.Neighbors.Add(Direction.West, westCell);
             }
 
             //east
             var eastX = (cellX + 1 + Width) % Width;
             if (Cells.TryGetValue((eastX, cellY), out Cell eastCell))
             {
-                cell.Neighbors.Add(eastCell);
+                cell.Neighbors.Add(Direction.East, eastCell);
             }
 
             //north
             var northY = (cellY - 1);
             if (Cells.TryGetValue((cellX, northY), out Cell northCell))
             {
-                cell.Neighbors.Add(northCell);
+                cell.Neighbors.Add(Direction.North, northCell);
             }
 
             //south
             var southY = (cellY + 1);
             if (Cells.TryGetValue((cellX, southY), out Cell southCell))
             {
-                cell.Neighbors.Add(southCell);
+                cell.Neighbors.Add(Direction.South, southCell);
             }
         }
     }

@@ -23,7 +23,7 @@ public class Pac: Position
         this.abilityCooldown = abilityCooldown;
     }
 
-    public void UpdateState(Pac visiblePac)
+    public void UpdateState(Pac visiblePac, Dictionary<(int, int), Pellet> visiblePellets)
     {
         this.x = visiblePac.x;
         this.y = visiblePac.y;
@@ -33,8 +33,10 @@ public class Pac: Position
 
         if(currentAction.IsCompleted(this))
         {
-            currentAction = null;
+            this.currentAction = null;
         }
+
+
     }
 
     public bool HasAction => currentAction != null;

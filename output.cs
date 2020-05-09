@@ -10,7 +10,7 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 
 
- // LastEdited: 10/05/2020 0:20 
+ // LastEdited: 10/05/2020 0:24 
 
 
 
@@ -83,17 +83,25 @@ public class Move : Action
 
 public class Cell: Position
 {
-    public readonly List<Cell> Neighbors;
+    public readonly Dictionary<Direction, Cell> Neighbors;
 
     public Cell(int x, int y): base(x,y)
     {
-        Neighbors = new List<Cell>();
+        Neighbors = new Dictionary<Direction, Cell>();
     }
 
     public override string ToString()
     {
         return $"({x.ToString()},{y.ToString()})";
     }
+}
+
+public enum Direction
+{
+    North, 
+    South, 
+    East, 
+    West
 }
 
 public class GameAI
@@ -175,7 +183,7 @@ public static class GameState
             }
             else
             {
-                myPacs[pacId].UpdateState(visiblePac);
+                myPacs[pacId].UpdateState(visiblePac, visiblePellets);
                 
             }
 
@@ -271,7 +279,7 @@ public static class Map
     {
         var currentCell = Cells[(position.x, position.y)];
 
-        return currentCell.Neighbors;
+        return currentCell.Neighbors.Values.ToList();
     }
 
     private static void ExtractCells(List<string> rows)
@@ -300,28 +308,28 @@ public static class Map
             var westX = (cellX - 1 + Width) % Width;
             if(Cells.TryGetValue((westX, cellY), out Cell westCell))
             {
-                cell.Neighbors.Add(westCell);
+                cell.Neighbors.Add(Direction.West, westCell);
             }
 
             //east
             var eastX = (cellX + 1 + Width) % Width;
             if (Cells.TryGetValue((eastX, cellY), out Cell eastCell))
             {
-                cell.Neighbors.Add(eastCell);
+                cell.Neighbors.Add(Direction.East, eastCell);
             }
 
             //north
             var northY = (cellY - 1);
             if (Cells.TryGetValue((cellX, northY), out Cell northCell))
             {
-                cell.Neighbors.Add(northCell);
+                cell.Neighbors.Add(Direction.North, northCell);
             }
 
             //south
             var southY = (cellY + 1);
             if (Cells.TryGetValue((cellX, southY), out Cell southCell))
             {
-                cell.Neighbors.Add(southCell);
+                cell.Neighbors.Add(Direction.South, southCell);
             }
         }
     }
@@ -350,7 +358,7 @@ public class Pac: Position
         this.abilityCooldown = abilityCooldown;
     }
 
-    public void UpdateState(Pac visiblePac)
+    public void UpdateState(Pac visiblePac, Dictionary<(int, int), Pellet> visiblePellets)
     {
         this.x = visiblePac.x;
         this.y = visiblePac.y;
@@ -360,8 +368,10 @@ public class Pac: Position
 
         if(currentAction.IsCompleted(this))
         {
-            currentAction = null;
+            this.currentAction = null;
         }
+
+
     }
 
     public bool HasAction => currentAction != null;

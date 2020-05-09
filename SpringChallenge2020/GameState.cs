@@ -54,7 +54,7 @@ public static class GameState
             }
             else
             {
-                myPacs[pacId].UpdateState(visiblePac);
+                myPacs[pacId].UpdateState(visiblePac, visiblePellets);
                 
             }
 
