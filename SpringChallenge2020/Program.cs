@@ -90,12 +90,12 @@ public class Player
 
             GameState.SetState(myScore, opponentScore, myPacs, enemyPacs, pellets);
 
-            //GameState.Debug();
+            GameState.Debug();
 
             var gameAI = new GameAI();
             gameAI.ComputeActions();
 
-            var actions = string.Join('|', GameState.CurrentMoves.Select(m => m.Value.ToString()));
+            var actions = string.Join('|', GameState.myPacs.Values.Select(pac => pac.GetCommand()));
 
             Console.WriteLine($"{actions} {watch.ElapsedMilliseconds.ToString()}"); // MOVE <pacId> <x> <y>
 

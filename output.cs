@@ -10,13 +10,15 @@ using System.Runtime.CompilerServices;
 using System.ComponentModel;
 
 
- // LastEdited: 09/05/2020 23:35 
+ // LastEdited: 10/05/2020 0:12 
 
 
 
 public abstract class Action 
 {
     public int pacId;
+
+    public abstract bool IsCompleted(Pac pac);
 
     public Action(int pacId)
     {
@@ -29,7 +31,10 @@ public class Speed : Action
     public Speed(int pacId): base(pacId)
     {  
     }
-
+    public override bool IsCompleted(Pac pac)
+    {
+        return true;
+    }
     public override string ToString()
     {
         return $"SPEED {pacId.ToString()}";
@@ -43,6 +48,10 @@ public class Switch : Action
     public Switch(int pacId, string pacType): base(pacId)
     {
         this.pacType = pacType;
+    }
+    public override bool IsCompleted(Pac pac)
+    {
+        return true;
     }
     public override string ToString()
     {
@@ -62,7 +71,10 @@ public class Move : Action
     }
 
     public (int, int) Coord => (x, y);
-
+    public override bool IsCompleted(Pac pac)
+    {
+        return pac.x == this.x && pac.y == this.y;
+    }
     public override string ToString()
     {
         return $"MOVE {pacId.ToString()} {x.ToString()} {y.ToString()}";
@@ -96,34 +108,11 @@ public class GameAI
             var pacId = kvp.Key;
             var pac = kvp.Value;
 
-            if(GameState.MyPacsDidNotMove.Contains(pacId))
+            if (pac.HasAction == false)
             {
-                //my pac is stuck, remove current move
-                GameState.CurrentMoves.Remove(pacId);
-            }
-
-            if (GameState.CurrentMoves.TryGetValue(pacId, out var existingMove))
-            {
-                // Check pac is at destination
-                if (pac.x == existingMove.x && pac.y == existingMove.y)
-                {
-                    //assign a new move
-                    AssignMoveToPac(random, pac);
-                }
-            }
-            else
-            {
-                //Assign a move to this pac
+                // Assign a move to this pac
+                Player.Debug("Assign a move to this pac");
                 AssignMoveToPac(random, pac);
-            }
-        }
-
-        foreach (var kvp in GameState.CurrentMoves.ToArray())
-        {
-            if (myPacs.Any(p => p.Key == kvp.Key) == false)
-            {
-                //pac died: remove move
-                GameState.CurrentMoves.Remove(kvp.Key);
             }
         }
     }
@@ -132,32 +121,20 @@ public class GameAI
     {
         var (x,y) = GameState.GetRandomCellToVisit(random);
 
-        var move = new Move(pac.pacId, x, y);
-
-        GameState.CurrentMoves[pac.pacId] = move;
+        pac.AssignMoveAction(x, y);
     }
 }
 
 public static class GameState
 {
-    public static Dictionary<int, Move> CurrentMoves = new Dictionary<int, Move>();
-
-    public static Dictionary<int, Pac> myPacs;
+    public readonly static Dictionary<int, Pac> myPacs;
     public static Dictionary<int, Pac> enemyPacs;
 
     public static int myScore, opponentScore;
 
     public static Dictionary<(int, int), Pellet> visiblePellets;
 
-    public static HashSet<int> MyPacsDidNotMove;
     public static HashSet<(int, int)> RemainingCellsToVisit;
-
-    public static string GetMoves()
-    {
-        return string.Join('|',
-            CurrentMoves.Values.Select(m => m.ToString()));
-           
-    }
 
     static GameState()
     {
@@ -177,38 +154,52 @@ public static class GameState
     }
 
     public static void SetState(int myScore, int opponentScore, 
-        Dictionary<int, Pac> myVisiblePacs, Dictionary<int, Pac> enemyVisiblePacs, 
+        Dictionary<int, Pac> myVisiblePacs, 
+        Dictionary<int, Pac> enemyVisiblePacs, 
         List<Pellet> visiblePellets)
     {
         GameState.myScore = myScore;
         GameState.opponentScore = opponentScore;
 
-        var newEnemyPacs = new Dictionary<int, Pac>();
-
-        GameState.MyPacsDidNotMove = new HashSet<int>();
+        RemoveMyDeadPacman(myVisiblePacs);
 
         foreach (var kvp in myVisiblePacs)
         {
             var pacId = kvp.Key;
             var visiblePac = kvp.Value;
 
-            if (myPacs.TryGetValue(pacId, out var currentPac))
+            if(myPacs.ContainsKey(pacId) == false)
             {
-                if (currentPac.x == visiblePac.x && currentPac.y == visiblePac.y)
+                myPacs[pacId] = visiblePac;
+            }
+            else
+            {
+                myPacs[pacId].UpdateState(visiblePac);
+                if(myPacs[pacId].ActionIsCompleted)
                 {
-                    GameState.MyPacsDidNotMove.Add(pacId);
+                    myPacs[pacId].ClearAction();
                 }
             }
 
             HasVisitedPosition(visiblePac);
         }
 
-        GameState.myPacs = myVisiblePacs;
-        GameState.enemyPacs = myVisiblePacs;
-
+        GameState.enemyPacs = enemyVisiblePacs;
         GameState.visiblePellets = visiblePellets.ToDictionary(
             keySelector: pellet => pellet.Coord,
-            elementSelector:  pellet => pellet);
+            elementSelector: pellet => pellet);
+    }
+
+    private static void RemoveMyDeadPacman(Dictionary<int, Pac> myVisiblePacs)
+    {
+        foreach (var kvp in myPacs)
+        {
+            var myPacId = kvp.Key;
+            if (myVisiblePacs.ContainsKey(myPacId) == false)
+            {
+                myPacs.Remove(myPacId);
+            }
+        }
     }
 
     private static void HasVisitedPosition(Pac visiblePac)
@@ -346,9 +337,13 @@ public class Pac: Position
     public readonly int pacId;
     public readonly bool mine;
   
-    public readonly string typeId; // unused in wood leagues
-    public readonly int speedTurnsLeft; // unused in wood leagues
-    public readonly int abilityCooldown; // unused in wood leagues
+    public string typeId; // unused in wood leagues
+    public int speedTurnsLeft; // unused in wood leagues
+    public int abilityCooldown; // unused in wood leagues
+
+    private Action currentAction;
+
+    private Dictionary<(int, int), Pellet> visiblePellets = new Dictionary<(int, int), Pellet>();
 
     public Pac(int pacId, bool mine, int x, int y, string typeId, int speedTurnsLeft, int abilityCooldown): base(x,y)
     {
@@ -359,21 +354,32 @@ public class Pac: Position
         this.abilityCooldown = abilityCooldown;
     }
 
-    public void Move(int x, int y)
+    public void UpdateState(Pac visiblePac)
     {
-        this.x = x;
-        this.y = y;
+        this.x = visiblePac.x;
+        this.y = visiblePac.y;
+        this.typeId = visiblePac.typeId;
+        this.speedTurnsLeft = visiblePac.speedTurnsLeft;
+        this.abilityCooldown = visiblePac.abilityCooldown;
     }
 
-    public Pac Clone()
+    public bool HasAction => currentAction != null;
+
+    public bool ActionIsCompleted => currentAction.IsCompleted(this);
+
+    public void AssignMoveAction(int x, int y)
     {
-        return new Pac(this.pacId,
-                        this.mine,
-                        this.x,
-                        this.y,
-                        this.typeId,
-                        this.speedTurnsLeft,
-                        this.abilityCooldown);
+        this.currentAction = new Move(this.pacId, x, y);
+    }
+
+    public void ClearAction()
+    {
+        this.currentAction = null;
+    }
+
+    public string GetCommand()
+    {
+        return this.currentAction.ToString();
     }
 
     public const string ROCK = "ROCK";
@@ -426,8 +432,6 @@ public class Pac: Position
 
         throw new Exception();
     }
-
-   
 
 }
 public class Pellet: Position
@@ -576,12 +580,12 @@ public class Player
 
             GameState.SetState(myScore, opponentScore, myPacs, enemyPacs, pellets);
 
-            //GameState.Debug();
+            GameState.Debug();
 
             var gameAI = new GameAI();
             gameAI.ComputeActions();
 
-            var actions = string.Join('|', GameState.CurrentMoves.Select(m => m.Value.ToString()));
+            var actions = string.Join('|', GameState.myPacs.Values.Select(pac => pac.GetCommand()));
 
             Console.WriteLine($"{actions} {watch.ElapsedMilliseconds.ToString()}"); // MOVE <pacId> <x> <y>
 

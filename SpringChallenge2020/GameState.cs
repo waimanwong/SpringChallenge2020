@@ -6,24 +6,14 @@ using System.Text;
 
 public static class GameState
 {
-    public static Dictionary<int, Move> CurrentMoves = new Dictionary<int, Move>();
-
-    public static Dictionary<int, Pac> myPacs;
+    public readonly static Dictionary<int, Pac> myPacs;
     public static Dictionary<int, Pac> enemyPacs;
 
     public static int myScore, opponentScore;
 
     public static Dictionary<(int, int), Pellet> visiblePellets;
 
-    public static HashSet<int> MyPacsDidNotMove;
     public static HashSet<(int, int)> RemainingCellsToVisit;
-
-    public static string GetMoves()
-    {
-        return string.Join('|',
-            CurrentMoves.Values.Select(m => m.ToString()));
-           
-    }
 
     static GameState()
     {
@@ -43,38 +33,52 @@ public static class GameState
     }
 
     public static void SetState(int myScore, int opponentScore, 
-        Dictionary<int, Pac> myVisiblePacs, Dictionary<int, Pac> enemyVisiblePacs, 
+        Dictionary<int, Pac> myVisiblePacs, 
+        Dictionary<int, Pac> enemyVisiblePacs, 
         List<Pellet> visiblePellets)
     {
         GameState.myScore = myScore;
         GameState.opponentScore = opponentScore;
 
-        var newEnemyPacs = new Dictionary<int, Pac>();
-
-        GameState.MyPacsDidNotMove = new HashSet<int>();
+        RemoveMyDeadPacman(myVisiblePacs);
 
         foreach (var kvp in myVisiblePacs)
         {
             var pacId = kvp.Key;
             var visiblePac = kvp.Value;
 
-            if (myPacs.TryGetValue(pacId, out var currentPac))
+            if(myPacs.ContainsKey(pacId) == false)
             {
-                if (currentPac.x == visiblePac.x && currentPac.y == visiblePac.y)
+                myPacs[pacId] = visiblePac;
+            }
+            else
+            {
+                myPacs[pacId].UpdateState(visiblePac);
+                if(myPacs[pacId].ActionIsCompleted)
                 {
-                    GameState.MyPacsDidNotMove.Add(pacId);
+                    myPacs[pacId].ClearAction();
                 }
             }
 
             HasVisitedPosition(visiblePac);
         }
 
-        GameState.myPacs = myVisiblePacs;
-        GameState.enemyPacs = myVisiblePacs;
-
+        GameState.enemyPacs = enemyVisiblePacs;
         GameState.visiblePellets = visiblePellets.ToDictionary(
             keySelector: pellet => pellet.Coord,
-            elementSelector:  pellet => pellet);
+            elementSelector: pellet => pellet);
+    }
+
+    private static void RemoveMyDeadPacman(Dictionary<int, Pac> myVisiblePacs)
+    {
+        foreach (var kvp in myPacs)
+        {
+            var myPacId = kvp.Key;
+            if (myVisiblePacs.ContainsKey(myPacId) == false)
+            {
+                myPacs.Remove(myPacId);
+            }
+        }
     }
 
     private static void HasVisitedPosition(Pac visiblePac)

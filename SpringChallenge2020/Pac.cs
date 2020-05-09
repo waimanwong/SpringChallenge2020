@@ -1,13 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
 
 public class Pac: Position
 {
     public readonly int pacId;
     public readonly bool mine;
   
-    public readonly string typeId; // unused in wood leagues
-    public readonly int speedTurnsLeft; // unused in wood leagues
-    public readonly int abilityCooldown; // unused in wood leagues
+    public string typeId; // unused in wood leagues
+    public int speedTurnsLeft; // unused in wood leagues
+    public int abilityCooldown; // unused in wood leagues
+
+    private Action currentAction;
+
+    private Dictionary<(int, int), Pellet> visiblePellets = new Dictionary<(int, int), Pellet>();
 
     public Pac(int pacId, bool mine, int x, int y, string typeId, int speedTurnsLeft, int abilityCooldown): base(x,y)
     {
@@ -18,21 +23,32 @@ public class Pac: Position
         this.abilityCooldown = abilityCooldown;
     }
 
-    public void Move(int x, int y)
+    public void UpdateState(Pac visiblePac)
     {
-        this.x = x;
-        this.y = y;
+        this.x = visiblePac.x;
+        this.y = visiblePac.y;
+        this.typeId = visiblePac.typeId;
+        this.speedTurnsLeft = visiblePac.speedTurnsLeft;
+        this.abilityCooldown = visiblePac.abilityCooldown;
     }
 
-    public Pac Clone()
+    public bool HasAction => currentAction != null;
+
+    public bool ActionIsCompleted => currentAction.IsCompleted(this);
+
+    public void AssignMoveAction(int x, int y)
     {
-        return new Pac(this.pacId,
-                        this.mine,
-                        this.x,
-                        this.y,
-                        this.typeId,
-                        this.speedTurnsLeft,
-                        this.abilityCooldown);
+        this.currentAction = new Move(this.pacId, x, y);
+    }
+
+    public void ClearAction()
+    {
+        this.currentAction = null;
+    }
+
+    public string GetCommand()
+    {
+        return this.currentAction.ToString();
     }
 
     public const string ROCK = "ROCK";
@@ -85,7 +101,5 @@ public class Pac: Position
 
         throw new Exception();
     }
-
-   
 
 }
