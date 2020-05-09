@@ -13,10 +13,7 @@ public class Pac: Position
 
     private Action currentAction;
 
-    private Dictionary<Direction, List<Pellet>> visiblePellets = new Dictionary<Direction, List<Pellet>>();
-
-    private Dictionary<Direction, int> possibleScores = new Dictionary<Direction, int>();
-
+    public Dictionary<Direction, Stack<Pellet>> visiblePellets = new Dictionary<Direction, Stack<Pellet>>();
     public Direction? bestDirectionForPellets;
 
     public Pac(int pacId, bool mine, int x, int y, string typeId, int speedTurnsLeft, int abilityCooldown): base(x,y)
@@ -59,23 +56,23 @@ public class Pac: Position
         foreach (var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West })
         {
             var currentCell = Map.Cells[(this.x, this.y)];
-            var pellets = new List<Pellet>();
+            var pellets = new Stack<Pellet>();
 
             while (currentCell.Neighbors.TryGetValue(direction, out var nextCell))
             {
                 currentCell = nextCell;
                 if (visiblePellets.TryGetValue(currentCell.Coord, out var visiblePellet))
                 {
-                    pellets.Add(visiblePellet);
+                    pellets.Push(visiblePellet);
                 }
             }
 
             this.visiblePellets[direction] = pellets;
-            this.possibleScores[direction] = pellets.Sum(p => p.value);
+            int score = pellets.Sum(p => p.value);
 
-            if(possibleScores[direction] > bestScore)
+            if(score > bestScore)
             {
-                bestScore = possibleScores[direction];
+                bestScore = score;
                 bestDirectionForPellets = direction;
             }
         }

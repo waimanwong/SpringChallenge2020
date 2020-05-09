@@ -26,10 +26,12 @@ public class GameAI
     {
         if(pac.bestDirectionForPellets != null)
         {
-            var targetCell = Map
-                .Cells[pac.Coord]
-                .Neighbors[pac.bestDirectionForPellets.Value];
-            pac.AssignMoveAction(targetCell.x, targetCell.y);
+            var choosenDirection = pac.bestDirectionForPellets.Value;
+            var pelletsToCollect = pac.visiblePellets[choosenDirection];
+
+            var lastPellet = pelletsToCollect.Peek();
+
+            pac.AssignMoveAction(lastPellet.x, lastPellet.y);
         }
         else
         {
