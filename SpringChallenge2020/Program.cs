@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Linq;
 
 /**
  * Grab the pellets as fast as you can!
@@ -89,12 +90,14 @@ public class Player
 
             GameState.SetState(myScore, opponentScore, myPacs, enemyPacs, pellets);
 
-            GameState.Debug();
+            //GameState.Debug();
 
             var gameAI = new GameAI();
-            gameAI.ComputeMoves();
+            gameAI.ComputeActions();
 
-            Console.WriteLine($"{GameState.GetMoves()} {watch.ElapsedMilliseconds.ToString()}"); // MOVE <pacId> <x> <y>
+            var actions = string.Join('|', GameState.CurrentMoves.Select(m => m.Value.ToString()));
+
+            Console.WriteLine($"{actions} {watch.ElapsedMilliseconds.ToString()}"); // MOVE <pacId> <x> <y>
 
         }
     }

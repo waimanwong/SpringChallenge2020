@@ -3,7 +3,7 @@ using System.Linq;
 
 public class GameAI
 {
-    public void ComputeMoves()
+    public void ComputeActions()
     {
         var myPacs = GameState.myPacs.ToList();
         var random = new Random();

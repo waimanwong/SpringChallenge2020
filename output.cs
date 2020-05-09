@@ -1,18 +1,73 @@
+using System.Runtime.Serialization;
 using System.Collections.Generic;
 using System;
 using System.Linq;
 using System.Diagnostics;
 using System.Text;
-using System.Runtime.Serialization;
 using System.Collections;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using System.ComponentModel;
 
 
- // LastEdited: 08/05/2020 17:28 
+ // LastEdited: 09/05/2020 23:35 
 
 
+
+public abstract class Action 
+{
+    public int pacId;
+
+    public Action(int pacId)
+    {
+        this.pacId = pacId;
+    }
+} 
+
+public class Speed : Action
+{
+    public Speed(int pacId): base(pacId)
+    {  
+    }
+
+    public override string ToString()
+    {
+        return $"SPEED {pacId.ToString()}";
+    }
+}
+
+public class Switch : Action
+{
+    public string pacType;
+
+    public Switch(int pacId, string pacType): base(pacId)
+    {
+        this.pacType = pacType;
+    }
+    public override string ToString()
+    {
+        return $"SWITCH {pacId.ToString()} {pacType.ToString()}";
+    }
+}
+
+public class Move : Action
+{
+    public int x;
+    public int y;
+
+    public Move(int pacId, int x, int y): base(pacId)
+    {
+        this.x = x;
+        this.y = y;
+    }
+
+    public (int, int) Coord => (x, y);
+
+    public override string ToString()
+    {
+        return $"MOVE {pacId.ToString()} {x.ToString()} {y.ToString()}";
+    }
+}
 
 public class Cell: Position
 {
@@ -31,7 +86,7 @@ public class Cell: Position
 
 public class GameAI
 {
-    public void ComputeMoves()
+    public void ComputeActions()
     {
         var myPacs = GameState.myPacs.ToList();
         var random = new Random();
@@ -286,27 +341,6 @@ public static class Map
 
 }
 
-public class Move
-{
-    public bool isMine;
-    public int pacId;
-    public int x;
-    public int y;
-
-    public Move(int pacId, int x, int y)
-    {
-        this.pacId = pacId;
-        this.x = x;
-        this.y = y;
-    }
-
-    public (int, int) Coord => (x, y);
-
-    public override string ToString()
-    {
-        return $"MOVE {pacId.ToString()} {x.ToString()} {y.ToString()}";
-    }
-}
 public class Pac: Position
 {
     public readonly int pacId;
@@ -341,6 +375,60 @@ public class Pac: Position
                         this.speedTurnsLeft,
                         this.abilityCooldown);
     }
+
+    public const string ROCK = "ROCK";
+    public const string PAPER = "PAPER";
+    public const string SCISSORS = "SCISSORS";
+
+    public int Compare(Pac enemyPac)
+    {
+        var myType = this.typeId;
+        var enemyType = enemyPac.typeId;
+
+        switch(myType)
+        {
+            case ROCK:
+                switch(enemyType)
+                {
+                    case ROCK:
+                        return 0;
+                    case PAPER:
+                        return -1;
+                    case SCISSORS:
+                        return 1;
+                }
+                break;
+
+            case "PAPER":
+                switch (enemyType)
+                {
+                    case ROCK:
+                        return 1;
+                    case PAPER:
+                        return 0;
+                    case SCISSORS:
+                        return -1;
+                }
+                break;
+
+            case "SCISSORS":
+                switch (enemyType)
+                {
+                    case ROCK:
+                        return -1;
+                    case PAPER:
+                        return 1;
+                    case SCISSORS:
+                        return 0;
+                }
+                break;
+        }
+
+        throw new Exception();
+    }
+
+   
+
 }
 public class Pellet: Position
 {
@@ -488,12 +576,14 @@ public class Player
 
             GameState.SetState(myScore, opponentScore, myPacs, enemyPacs, pellets);
 
-            GameState.Debug();
+            //GameState.Debug();
 
             var gameAI = new GameAI();
-            gameAI.ComputeMoves();
+            gameAI.ComputeActions();
 
-            Console.WriteLine($"{GameState.GetMoves()} {watch.ElapsedMilliseconds.ToString()}"); // MOVE <pacId> <x> <y>
+            var actions = string.Join('|', GameState.CurrentMoves.Select(m => m.Value.ToString()));
+
+            Console.WriteLine($"{actions} {watch.ElapsedMilliseconds.ToString()}"); // MOVE <pacId> <x> <y>
 
         }
     }
