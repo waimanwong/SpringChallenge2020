@@ -11,7 +11,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 
 
- // LastEdited: 10/05/2020 11:49 
+ // LastEdited: 10/05/2020 11:51 
 
 
 
@@ -405,7 +405,7 @@ public class Pac: Position
 
     private Action currentAction;
 
-    public Dictionary<Direction, Stack<Pellet>> visiblePellets = new Dictionary<Direction, Stack<Pellet>>();
+    private Dictionary<Direction, Queue<Pellet>> visiblePellets = new Dictionary<Direction, Queue<Pellet>>();
     public Direction? bestDirectionForPellets;
     public Behavior Behavior;
     public bool IsBlocked = false;
@@ -465,7 +465,7 @@ public class Pac: Position
         foreach (var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West })
         {
             var currentCell = Map.Cells[(this.x, this.y)];
-            var pellets = new Stack<Pellet>();
+            var pellets = new Queue<Pellet>();
 
             while (currentCell.Neighbors.TryGetValue(direction, out var nextCell))
             {
@@ -482,7 +482,7 @@ public class Pac: Position
 
                 if (visiblePellets.TryGetValue(currentCell.Coord, out var visiblePellet))
                 {
-                    pellets.Push(visiblePellet);
+                    pellets.Enqueue(visiblePellet);
                 }
             }
 
