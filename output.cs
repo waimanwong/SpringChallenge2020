@@ -11,7 +11,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 
 
- // LastEdited: 10/05/2020 14:55 
+ // LastEdited: 10/05/2020 15:08 
 
 
 
@@ -112,7 +112,7 @@ public static class GameState
 
     public static Dictionary<(int, int), Pellet> visiblePellets;
 
-    public static HashSet<(int, int)> RemainingCellsToVisit;
+    public static HashSet<(int, int)> VisitedPositions;
 
     static GameState()
     {
@@ -121,14 +121,14 @@ public static class GameState
 
     public static void InitializeRemainingCellsToVisit()
     {
-        RemainingCellsToVisit = Map.Cells.Keys.ToHashSet();
+        VisitedPositions = Map.Cells.Keys.ToHashSet();
     }
 
     public static (int,int) GetRandomCellToVisit(Random random)
     {
-        var randomIndex = random.Next(RemainingCellsToVisit.Count);
+        var randomIndex = random.Next(VisitedPositions.Count);
 
-        return RemainingCellsToVisit.ElementAt(randomIndex);
+        return VisitedPositions.ElementAt(randomIndex);
     }
 
     public static void SetState(
@@ -141,13 +141,17 @@ public static class GameState
         GameState.opponentScore = opponentScore;
 
         RemoveMyDeadPacman(myVisiblePacsById);
+        
+        foreach (var kvp in myVisiblePacsById)
+        {
+            var visiblePac = kvp.Value;
+            UpdateVisitedPositions(visiblePac);
+        }
 
         foreach (var kvp in myVisiblePacsById)
         {
             var pacId = kvp.Key;
             var visiblePac = kvp.Value;
-
-            HasVisitedPosition(visiblePac);
 
             if (myPacs.ContainsKey(pacId) == false)
             {
@@ -178,13 +182,13 @@ public static class GameState
         }
     }
 
-    private static void HasVisitedPosition(Pac visiblePac)
+    private static void UpdateVisitedPositions(Pac visiblePac)
     {
         var visitedCoord = (visiblePac.x, visiblePac.y);
 
-        if(RemainingCellsToVisit.Contains(visitedCoord))
+        if(VisitedPositions.Contains(visitedCoord))
         {
-            RemainingCellsToVisit.Remove(visitedCoord);
+            VisitedPositions.Remove(visitedCoord);
         }
     }
 
@@ -196,7 +200,6 @@ public static class GameState
         var enemyPacs = GameState.enemyPacs.Values
             .ToDictionary(keySelector: pac => (pac.x, pac.y), elementSelector: pac => pac);
 
-
         for (int y = 0; y < Map.Height; y++)
         {
             row.Clear();
@@ -205,22 +208,31 @@ public static class GameState
                 var coord = (x, y);
                 if (Map.Cells.ContainsKey(coord))
                 {
-                    if (visiblePellets.TryGetValue(coord, out var pellet))
+                    if(VisitedPositions.Contains(coord))
                     {
-                        row.Append(pellet.value == 1 ? 'o' : 'O');
-                    }
-                    else if(myPacs.TryGetValue(coord, out var myPac))
-                    {
-                        row.Append(myPac.pacId.ToString());
-                    }
-                    else if (enemyPacs.TryGetValue(coord, out var enemyPac))
-                    {
-                        row.Append('!');
+                        row.Append('.');
                     }
                     else
                     {
                         row.Append(' ');
                     }
+
+                    //if (visiblePellets.TryGetValue(coord, out var pellet))
+                    //{
+                    //    row.Append(pellet.value == 1 ? 'o' : 'O');
+                    //}
+                    //else if(myPacs.TryGetValue(coord, out var myPac))
+                    //{
+                    //    row.Append(myPac.pacId.ToString());
+                    //}
+                    //else if (enemyPacs.TryGetValue(coord, out var enemyPac))
+                    //{
+                    //    row.Append('!');
+                    //}
+                    //else
+                    //{
+                    //    row.Append(' ');
+                    //}
                 }
                 else
                     row.Append('#');
