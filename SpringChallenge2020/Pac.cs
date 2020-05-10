@@ -201,7 +201,9 @@ public class Pac: Position
             return $"SPEED {this.pacId.ToString()} {this.Behavior.ToString()}";
         }
 
-        return $"{this.currentMove.ToString()} {this.Behavior.ToString()}";
+        var message = $"{this.Behavior.ToString().First()} {this.currentMove.x} {this.currentMove.y}";
+
+        return $"{this.currentMove.ToString()} {message}";
     }
 
     public const string ROCK = "ROCK";

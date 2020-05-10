@@ -11,7 +11,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 
 
- // LastEdited: 10/05/2020 14:35 
+ // LastEdited: 10/05/2020 14:55 
 
 
 
@@ -507,7 +507,9 @@ public class Pac: Position
             return $"SPEED {this.pacId.ToString()} {this.Behavior.ToString()}";
         }
 
-        return $"{this.currentMove.ToString()} {this.Behavior.ToString()}";
+        var message = $"{this.Behavior.ToString().First()} {this.currentMove.x} {this.currentMove.y}";
+
+        return $"{this.currentMove.ToString()} {message}";
     }
 
     public const string ROCK = "ROCK";
