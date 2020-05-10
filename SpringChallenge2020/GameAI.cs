@@ -24,14 +24,14 @@ public class GameAI
             {
                 case Behavior.CollectPellet:
 
-                    if(pac.HasAction == false)
+                    if(pac.HasMove == false)
                     {
                         pac.CollectPellet();
                     }
                     break;
 
                 case Behavior.RandomMove:
-                    if (pac.HasAction == false)
+                    if (pac.HasMove == false)
                     {
                         pac.RandomMoveTo(random);
                     }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.Tracing;
 using System.Linq;
 
 
@@ -20,10 +19,14 @@ public class Pac: Position
 
     public int abilityCooldown; // unused in wood leagues
 
-    private Action currentAction;
+    private Move currentMove;
+    private bool activateSpeed = false;
+    
     public Direction? bestDirectionForPellets;
 
     private Behavior _behavior;
+    private bool isBlocked = false;
+
 
     public Behavior Behavior { 
         get { return _behavior; }
@@ -32,13 +35,11 @@ public class Pac: Position
             if( this._behavior != value)
             {
                 //Changing behavior => cancel current action
-                currentAction = null;
+                currentMove = null;
             }
             this._behavior = value;
         } 
     }
-
-    private bool isBlocked = false;
 
     public Pac(int pacId, bool mine, int x, int y, string typeId, int speedTurnsLeft, int abilityCooldown): base(x,y)
     {
@@ -63,23 +64,32 @@ public class Pac: Position
         this.speedTurnsLeft = visiblePac.speedTurnsLeft;
         this.abilityCooldown = visiblePac.abilityCooldown;
 
-        CheckCurrentActionCompletion();
+        this.activateSpeed = false;
+
+        CheckCurrentMoveCompletion();
     }
 
     private void CheckIfBlocked(Pac visiblePac)
     {
-       isBlocked = this.x == visiblePac.x && this.y == visiblePac.y; 
+        var lastActionIsMove = (this.activateSpeed == false);
+       isBlocked = lastActionIsMove && this.x == visiblePac.x && this.y == visiblePac.y; 
     }
 
-    private void CheckCurrentActionCompletion()
+    private void CheckCurrentMoveCompletion()
     {
-        if (currentAction.IsCompleted(this))
+        if (this.currentMove != null  && this.currentMove.IsCompleted(this))
         {
-            this.currentAction = null;
+            this.currentMove = null;
+        }
+
+        if(this.isBlocked)
+        {
+            //Cancel current move
+            this.currentMove = null;
         }
     }
 
-    public void ComputeBehavior(
+    public Behavior ComputeBehavior(
         Dictionary<int, Pac> myVisiblePacsById,
         Dictionary<int, Pac> enemyVisiblePacsbyId, 
         Dictionary<(int, int), Pellet> visiblePellets)
@@ -88,11 +98,12 @@ public class Pac: Position
         {
             Player.Debug($"{pacId} is blocked.");
             this.Behavior = Behavior.RandomMove;
+            return this.Behavior;
         }
-
+        
         SetBestDirectionForPellets(myVisiblePacsById, visiblePellets);
 
-        if(this.bestDirectionForPellets == null)
+        if (this.bestDirectionForPellets == null)
         {
             this.Behavior = Behavior.RandomMove;
         }
@@ -100,6 +111,8 @@ public class Pac: Position
         {
             this.Behavior = Behavior.CollectPellet;
         }
+
+        return this.Behavior;
     }
 
     private void SetBestDirectionForPellets(Dictionary<int, Pac> myVisiblePacsById, Dictionary<(int, int), Pellet> visiblePellets)
@@ -117,11 +130,19 @@ public class Pac: Position
             var distance = 0;
             var currentCell = Map.Cells[(this.x, this.y)];
             double score = 0;
+            var visitedPosition = new HashSet<(int, int)>();
+
+            visitedPosition.Add(currentCell.Coord);
 
             while (currentCell.Neighbors.TryGetValue(direction, out var nextCell))
             {
+                if (visitedPosition.Contains(nextCell.Coord))
+                    break;
+
                 distance += 1;
                 currentCell = nextCell;
+
+                visitedPosition.Add(currentCell.Coord);
 
                 if (myVisiblePacs.TryGetValue(currentCell.Coord, out var myBlockingPac))
                 {
@@ -147,14 +168,14 @@ public class Pac: Position
         }
     }
 
-    public bool HasAction => currentAction != null;
+    public bool HasMove => currentMove != null;
 
     public void CollectPellet()
     {
         var choosenDirection = this.bestDirectionForPellets.Value;
         var cell = Map.Cells[this.Coord].Neighbors[choosenDirection];
         
-        this.currentAction = new Move(this.pacId, cell.x, cell.y);
+        this.currentMove = new Move(this.pacId, cell.x, cell.y);
 
         Player.Debug($"\tCollectPelletTo ({cell.x},{cell.y})");
     }
@@ -163,19 +184,24 @@ public class Pac: Position
     {
         var (targetX, targetY) = GameState.GetRandomCellToVisit(random);
 
-        this.currentAction = new Move(this.pacId, targetX, targetY);
+        this.currentMove = new Move(this.pacId, targetX, targetY);
 
         Player.Debug($"\tRandomMoveTo ({targetX},{targetY})");
     }
 
     public void ActivateSpeed()
     {
-        this.currentAction = new Speed(this.pacId);
+        this.activateSpeed = true;
     }
 
     public string GetCommand()
     {
-        return $"{this.currentAction.ToString()} {this.Behavior.ToString()}";
+        if( this.activateSpeed )
+        {
+            return $"SPEED {this.pacId.ToString()} {this.Behavior.ToString()}";
+        }
+
+        return $"{this.currentMove.ToString()} {this.Behavior.ToString()}";
     }
 
     public const string ROCK = "ROCK";

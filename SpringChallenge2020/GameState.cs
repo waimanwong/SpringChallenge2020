@@ -58,7 +58,8 @@ public static class GameState
                 myPacs[pacId].UpdateState(visiblePac);
             }
 
-            myPacs[pacId].ComputeBehavior(myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
+            var newBehavior = myPacs[pacId].ComputeBehavior(myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
+            Player.Debug($"{pacId.ToString()} new behavior = {newBehavior.ToString()}");
         }
 
         GameState.enemyPacs = enemyVisiblePacsById;
