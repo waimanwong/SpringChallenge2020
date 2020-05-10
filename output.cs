@@ -11,7 +11,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 
 
- // LastEdited: 10/05/2020 15:08 
+ // LastEdited: 10/05/2020 15:51 
 
 
 
@@ -112,7 +112,7 @@ public static class GameState
 
     public static Dictionary<(int, int), Pellet> visiblePellets;
 
-    public static HashSet<(int, int)> VisitedPositions;
+    public static HashSet<(int, int)> PositionsToVisit;
 
     static GameState()
     {
@@ -121,14 +121,14 @@ public static class GameState
 
     public static void InitializeRemainingCellsToVisit()
     {
-        VisitedPositions = Map.Cells.Keys.ToHashSet();
+        PositionsToVisit = Map.Cells.Keys.ToHashSet();
     }
 
     public static (int,int) GetRandomCellToVisit(Random random)
     {
-        var randomIndex = random.Next(VisitedPositions.Count);
+        var randomIndex = random.Next(PositionsToVisit.Count);
 
-        return VisitedPositions.ElementAt(randomIndex);
+        return PositionsToVisit.ElementAt(randomIndex);
     }
 
     public static void SetState(
@@ -141,12 +141,8 @@ public static class GameState
         GameState.opponentScore = opponentScore;
 
         RemoveMyDeadPacman(myVisiblePacsById);
-        
-        foreach (var kvp in myVisiblePacsById)
-        {
-            var visiblePac = kvp.Value;
-            UpdateVisitedPositions(visiblePac);
-        }
+
+        UpdateVisitedPositions(myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
 
         foreach (var kvp in myVisiblePacsById)
         {
@@ -163,7 +159,6 @@ public static class GameState
             }
 
             var newBehavior = myPacs[pacId].ComputeBehavior(myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
-            Player.Debug($"{pacId.ToString()} new behavior = {newBehavior.ToString()}");
         }
 
         GameState.enemyPacs = enemyVisiblePacsById;
@@ -182,13 +177,58 @@ public static class GameState
         }
     }
 
-    private static void UpdateVisitedPositions(Pac visiblePac)
+    private static void UpdateVisitedPositions(
+        Dictionary<int, Pac> myVisiblePacsById,
+        Dictionary<int, Pac> enemyVisiblePacsById,
+        Dictionary<(int, int), Pellet> visiblePelletsByCoord)
     {
-        var visitedCoord = (visiblePac.x, visiblePac.y);
+        var enemyKnownPositions = enemyVisiblePacsById.Values.Select(p => p.Coord).ToHashSet();
+        var visiblePellets = visiblePelletsByCoord.Keys.ToHashSet();
 
-        if(VisitedPositions.Contains(visitedCoord))
+        foreach (var kvp in myVisiblePacsById)
         {
-            VisitedPositions.Remove(visitedCoord);
+            var visiblePac = kvp.Value;
+            var visitedCoord = (visiblePac.x, visiblePac.y);
+
+            if (PositionsToVisit.Contains(visitedCoord))
+            {
+                PositionsToVisit.Remove(visitedCoord);
+            }
+
+            //Update based on the vision of the pac
+            foreach (var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West })
+            {
+                var currentCell = Map.Cells[(visiblePac.x, visiblePac.y)];
+                var processedPositions = new HashSet<(int, int)>();
+
+                processedPositions.Add(currentCell.Coord);
+
+                while (currentCell.Neighbors.TryGetValue(direction, out var nextCell))
+                {
+                    if (processedPositions.Contains(nextCell.Coord))
+                        break;
+
+                    currentCell = nextCell;
+
+                    if (PositionsToVisit.Contains(currentCell.Coord))
+                    {
+                        var thereIsAnEnemyAtCurrentCell = enemyKnownPositions.Contains(currentCell.Coord);
+                        var thereIsNotPelletAtCurrentCell = visiblePellets.Contains(currentCell.Coord) == false;
+
+                        if(thereIsAnEnemyAtCurrentCell || thereIsNotPelletAtCurrentCell)
+                        {
+                            //place is visited
+                            PositionsToVisit.Remove(currentCell.Coord);
+                        }
+                    }
+                }
+            }
+        }
+
+        foreach(var enemyKnownPosition in enemyKnownPositions)
+        {
+            if (PositionsToVisit.Contains(enemyKnownPosition))
+                PositionsToVisit.Remove(enemyKnownPosition);
         }
     }
 
@@ -208,7 +248,7 @@ public static class GameState
                 var coord = (x, y);
                 if (Map.Cells.ContainsKey(coord))
                 {
-                    if(VisitedPositions.Contains(coord))
+                    if(PositionsToVisit.Contains(coord))
                     {
                         row.Append('.');
                     }
@@ -666,7 +706,9 @@ public class Player
         Map.Set(width, height, rows);
 
         GameState.InitializeRemainingCellsToVisit();
-       
+
+        bool isFirstTurn = true;
+
         // game loop
         while (true)
         {
@@ -685,7 +727,8 @@ public class Player
             for (int i = 0; i < visiblePacCount; i++)
             {
                 var pacState = Console.ReadLine();
-                Debug(pacState);
+
+                Player.Debug(pacState);
 
                 inputs = pacState.Split(' ');
                 int pacId = int.Parse(inputs[0]); // pac number (unique within a team)
@@ -706,6 +749,25 @@ public class Player
                 {
                     enemyPacs.Add(pac.pacId, pac);
                 }
+            }
+
+            if(isFirstTurn)
+            {
+                //Map is symetric so we know where the enemies are
+                foreach(var kvp in myPacs)
+                {
+                    var myPac = kvp.Value;
+                    var myPacId = kvp.Key;
+
+                    if (enemyPacs.ContainsKey(myPacId) == false)
+                    {
+                        var symetricPac = new Pac(myPac.pacId, false, width - myPac.x - 1, myPac.y, myPac.typeId, myPac.speedTurnsLeft, myPac.abilityCooldown);
+                        enemyPacs.Add(myPacId, symetricPac);
+                    }
+                }
+                isFirstTurn = false;
+
+                Player.Debug($"{enemyPacs.Count()}");
             }
 
             int visiblePelletCount = int.Parse(Console.ReadLine()); // all pellets in sight

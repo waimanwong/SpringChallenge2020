@@ -32,7 +32,9 @@ public class Player
         Map.Set(width, height, rows);
 
         GameState.InitializeRemainingCellsToVisit();
-       
+
+        bool isFirstTurn = true;
+
         // game loop
         while (true)
         {
@@ -51,7 +53,8 @@ public class Player
             for (int i = 0; i < visiblePacCount; i++)
             {
                 var pacState = Console.ReadLine();
-                Debug(pacState);
+
+                Player.Debug(pacState);
 
                 inputs = pacState.Split(' ');
                 int pacId = int.Parse(inputs[0]); // pac number (unique within a team)
@@ -72,6 +75,25 @@ public class Player
                 {
                     enemyPacs.Add(pac.pacId, pac);
                 }
+            }
+
+            if(isFirstTurn)
+            {
+                //Map is symetric so we know where the enemies are
+                foreach(var kvp in myPacs)
+                {
+                    var myPac = kvp.Value;
+                    var myPacId = kvp.Key;
+
+                    if (enemyPacs.ContainsKey(myPacId) == false)
+                    {
+                        var symetricPac = new Pac(myPac.pacId, false, width - myPac.x - 1, myPac.y, myPac.typeId, myPac.speedTurnsLeft, myPac.abilityCooldown);
+                        enemyPacs.Add(myPacId, symetricPac);
+                    }
+                }
+                isFirstTurn = false;
+
+                Player.Debug($"{enemyPacs.Count()}");
             }
 
             int visiblePelletCount = int.Parse(Console.ReadLine()); // all pellets in sight
