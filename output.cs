@@ -2,15 +2,16 @@ using System.Runtime.Serialization;
 using System.Collections.Generic;
 using System;
 using System.Linq;
-using System.Diagnostics;
 using System.Text;
+using System.Diagnostics.Tracing;
 using System.Collections;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using System.ComponentModel;
+using System.Diagnostics;
 
 
- // LastEdited: 10/05/2020 0:59 
+ // LastEdited: 10/05/2020 2:12 
 
 
 
@@ -116,31 +117,66 @@ public class GameAI
             var pacId = kvp.Key;
             var pac = kvp.Value;
 
-            if (pac.HasAction == false)
+            if (pac.abilityCooldown == 0)
             {
-                // Assign a move to this pac
-                Player.Debug($"Assign a move to this pac {pacId.ToString()}");
-                AssignMoveToPac(random, pac);
+                pac.ActivateSpeed();
+            }
+            else
+            {
+                if (pac.IsBlocked)
+                {
+                    Unblock(pac, random);
+                }
+                else
+                {
+                    if(pac.Behavior == Behavior.RandomMove)
+                    {
+                        if (pac.bestDirectionForPellets != null)
+                        {
+                            var choosenDirection = pac.bestDirectionForPellets.Value;
+                            
+                            var cell = Map.Cells[pac.Coord].Neighbors[choosenDirection];
+                            pac.CollectPelletTo(cell.x, cell.y);
+                        }
+                    }
+
+                    if (pac.HasAction == false)
+                    {
+                        // Assign a move to this pac
+                        
+                        AssignMoveToPac(pac, random);
+                    }
+                }
             }
         }
     }
 
-    private void AssignMoveToPac(Random random, Pac pac)
+    private void Unblock(Pac pac, Random random)
     {
-        if(pac.bestDirectionForPellets != null)
+        Player.Debug($"Unblock {pac.pacId.ToString()}");
+        pac.RandomMoveTo(random);
+    }
+
+    private void AssignMoveToPac(Pac pac, Random random)
+    {
+        Player.Debug($"Assign a move to this pac {pac.pacId.ToString()}");
+        if (pac.bestDirectionForPellets != null)
         {
             var choosenDirection = pac.bestDirectionForPellets.Value;
-            var pelletsToCollect = pac.visiblePellets[choosenDirection];
+            //var pelletsToCollect = pac.visiblePellets[choosenDirection];
 
-            var lastPellet = pelletsToCollect.Peek();
+            //var lastPellet = pelletsToCollect.Peek();
 
-            pac.AssignMoveAction(lastPellet.x, lastPellet.y);
+            //pac.CollectPelletTo(lastPellet.x, lastPellet.y);
+
+
+            var cell = Map.Cells[pac.Coord].Neighbors[choosenDirection];
+            pac.CollectPelletTo(cell.x, cell.y);
+
         }
         else
         {
-            var (x, y) = GameState.GetRandomCellToVisit(random);
-
-            pac.AssignMoveAction(x, y);
+            pac.RandomMoveTo(random);
         }
     }
 }
@@ -175,43 +211,44 @@ public static class GameState
 
     public static void SetState(
         int myScore, int opponentScore, 
-        Dictionary<int, Pac> myVisiblePacs, 
-        Dictionary<int, Pac> enemyVisiblePacs,
+        Dictionary<int, Pac> myVisiblePacsById, 
+        Dictionary<int, Pac> enemyVisiblePacsById,
         Dictionary<(int, int), Pellet> visiblePellets)
     {
         GameState.myScore = myScore;
         GameState.opponentScore = opponentScore;
 
-        RemoveMyDeadPacman(myVisiblePacs);
+        RemoveMyDeadPacman(myVisiblePacsById);
 
-        foreach (var kvp in myVisiblePacs)
+        foreach (var kvp in myVisiblePacsById)
         {
             var pacId = kvp.Key;
             var visiblePac = kvp.Value;
 
-            if(myPacs.ContainsKey(pacId) == false)
+            HasVisitedPosition(visiblePac);
+
+            if (myPacs.ContainsKey(pacId) == false)
             {
                 myPacs[pacId] = visiblePac;
             }
             else
             {
-                myPacs[pacId].UpdateState(visiblePac, visiblePellets);
-                
+                myPacs[pacId].UpdateState(visiblePac, myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
             }
 
-            HasVisitedPosition(visiblePac);
+            myPacs[pacId].SetVisiblePellets(myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
         }
 
-        GameState.enemyPacs = enemyVisiblePacs;
+        GameState.enemyPacs = enemyVisiblePacsById;
         GameState.visiblePellets = visiblePellets;
     }
 
-    private static void RemoveMyDeadPacman(Dictionary<int, Pac> myVisiblePacs)
+    private static void RemoveMyDeadPacman(Dictionary<int, Pac> myVisiblePacsById)
     {
         foreach (var kvp in myPacs)
         {
             var myPacId = kvp.Key;
-            if (myVisiblePacs.ContainsKey(myPacId) == false)
+            if (myVisiblePacsById.ContainsKey(myPacId) == false)
             {
                 myPacs.Remove(myPacId);
             }
@@ -348,6 +385,14 @@ public static class Map
 
 }
 
+
+public enum Behavior
+{
+    None,
+    RandomMove,
+    CollectPellet
+}
+
 public class Pac: Position
 {
     public readonly int pacId;
@@ -355,12 +400,15 @@ public class Pac: Position
   
     public string typeId; // unused in wood leagues
     public int speedTurnsLeft; // unused in wood leagues
+
     public int abilityCooldown; // unused in wood leagues
 
     private Action currentAction;
 
     public Dictionary<Direction, Stack<Pellet>> visiblePellets = new Dictionary<Direction, Stack<Pellet>>();
     public Direction? bestDirectionForPellets;
+    public Behavior Behavior;
+    public bool IsBlocked = false;
 
     public Pac(int pacId, bool mine, int x, int y, string typeId, int speedTurnsLeft, int abilityCooldown): base(x,y)
     {
@@ -369,19 +417,32 @@ public class Pac: Position
         this.typeId = typeId;
         this.speedTurnsLeft = speedTurnsLeft;
         this.abilityCooldown = abilityCooldown;
+
+        this.Behavior = Behavior.None;
+
     }
 
-    public void UpdateState(Pac visiblePac, Dictionary<(int, int), Pellet> visiblePellets)
+    public void UpdateState(Pac visiblePac, 
+        Dictionary<int, Pac> myVisiblePacs,
+        Dictionary<int, Pac> enemyVisiblePacs, 
+        Dictionary<(int, int), Pellet> visiblePellets)
     {
+        CheckIfBlocked(visiblePac);
+
         this.x = visiblePac.x;
         this.y = visiblePac.y;
+
         this.typeId = visiblePac.typeId;
         this.speedTurnsLeft = visiblePac.speedTurnsLeft;
         this.abilityCooldown = visiblePac.abilityCooldown;
 
         CheckCurrentActionCompletion();
 
-        SetVisiblePellets(visiblePellets);
+    }
+
+    private void CheckIfBlocked(Pac visiblePac)
+    {
+       IsBlocked = this.x == visiblePac.x && this.y == visiblePac.y; 
     }
 
     private void CheckCurrentActionCompletion()
@@ -392,12 +453,18 @@ public class Pac: Position
         }
     }
 
-    private void SetVisiblePellets(Dictionary<(int, int), Pellet> visiblePellets)
+    public void SetVisiblePellets(
+        Dictionary<int, Pac> myVisiblePacsById,
+        Dictionary<int, Pac> enemyVisiblePacsbyId, 
+        Dictionary<(int, int), Pellet> visiblePellets)
     {
         bestDirectionForPellets = null;
         this.visiblePellets.Clear();
 
         int bestScore = 0;
+
+        var myVisiblePacs = myVisiblePacsById.Values
+            .ToDictionary(keySelector: pac => pac.Coord, elementSelector: pac => pac);
 
         foreach (var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West })
         {
@@ -407,6 +474,16 @@ public class Pac: Position
             while (currentCell.Neighbors.TryGetValue(direction, out var nextCell))
             {
                 currentCell = nextCell;
+
+                if(myVisiblePacs.TryGetValue(currentCell.Coord, out var myBlockingPac))
+                {
+                    //Block in one way
+                    if( myBlockingPac.x < this.x || myBlockingPac.y < this.y)
+                    {
+                        break;
+                    }
+                }
+
                 if (visiblePellets.TryGetValue(currentCell.Coord, out var visiblePellet))
                 {
                     pellets.Push(visiblePellet);
@@ -426,19 +503,32 @@ public class Pac: Position
 
     public bool HasAction => currentAction != null;
 
-    public void AssignMoveAction(int x, int y)
+    public void CollectPelletTo(int x, int y)
     {
+        this.Behavior = Behavior.CollectPellet;
         this.currentAction = new Move(this.pacId, x, y);
+
+        Player.Debug($"\tCollectPelletTo ({x},{y})");
     }
 
-    public void ClearAction()
+    public void RandomMoveTo(Random random)
     {
-        this.currentAction = null;
+        var (x, y) = GameState.GetRandomCellToVisit(random);
+
+        this.Behavior = Behavior.RandomMove;
+        this.currentAction = new Move(this.pacId, x, y);
+
+        Player.Debug($"\tRandomMoveTo ({x},{y})");
+    }
+
+    public void ActivateSpeed()
+    {
+        this.currentAction = new Speed(this.pacId);
     }
 
     public string GetCommand()
     {
-        return this.currentAction.ToString();
+        return $"{this.currentAction.ToString()} {this.Behavior.ToString()}";
     }
 
     public const string ROCK = "ROCK";
@@ -648,7 +738,7 @@ public class Player
 
             var actions = string.Join('|', GameState.myPacs.Values.Select(pac => pac.GetCommand()));
 
-            Console.WriteLine($"{actions} {watch.ElapsedMilliseconds.ToString()}"); // MOVE <pacId> <x> <y>
+            Console.WriteLine($"{actions} {watch.ElapsedMilliseconds.ToString()} ms"); // MOVE <pacId> <x> <y>
 
         }
     }

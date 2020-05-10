@@ -13,31 +13,66 @@ public class GameAI
             var pacId = kvp.Key;
             var pac = kvp.Value;
 
-            if (pac.HasAction == false)
+            if (pac.abilityCooldown == 0)
             {
-                // Assign a move to this pac
-                Player.Debug($"Assign a move to this pac {pacId.ToString()}");
-                AssignMoveToPac(random, pac);
+                pac.ActivateSpeed();
+            }
+            else
+            {
+                if (pac.IsBlocked)
+                {
+                    Unblock(pac, random);
+                }
+                else
+                {
+                    if(pac.Behavior == Behavior.RandomMove)
+                    {
+                        if (pac.bestDirectionForPellets != null)
+                        {
+                            var choosenDirection = pac.bestDirectionForPellets.Value;
+                            
+                            var cell = Map.Cells[pac.Coord].Neighbors[choosenDirection];
+                            pac.CollectPelletTo(cell.x, cell.y);
+                        }
+                    }
+
+                    if (pac.HasAction == false)
+                    {
+                        // Assign a move to this pac
+                        
+                        AssignMoveToPac(pac, random);
+                    }
+                }
             }
         }
     }
 
-    private void AssignMoveToPac(Random random, Pac pac)
+    private void Unblock(Pac pac, Random random)
     {
-        if(pac.bestDirectionForPellets != null)
+        Player.Debug($"Unblock {pac.pacId.ToString()}");
+        pac.RandomMoveTo(random);
+    }
+
+    private void AssignMoveToPac(Pac pac, Random random)
+    {
+        Player.Debug($"Assign a move to this pac {pac.pacId.ToString()}");
+        if (pac.bestDirectionForPellets != null)
         {
             var choosenDirection = pac.bestDirectionForPellets.Value;
-            var pelletsToCollect = pac.visiblePellets[choosenDirection];
+            //var pelletsToCollect = pac.visiblePellets[choosenDirection];
 
-            var lastPellet = pelletsToCollect.Peek();
+            //var lastPellet = pelletsToCollect.Peek();
 
-            pac.AssignMoveAction(lastPellet.x, lastPellet.y);
+            //pac.CollectPelletTo(lastPellet.x, lastPellet.y);
+
+
+            var cell = Map.Cells[pac.Coord].Neighbors[choosenDirection];
+            pac.CollectPelletTo(cell.x, cell.y);
+
         }
         else
         {
-            var (x, y) = GameState.GetRandomCellToVisit(random);
-
-            pac.AssignMoveAction(x, y);
+            pac.RandomMoveTo(random);
         }
     }
 }

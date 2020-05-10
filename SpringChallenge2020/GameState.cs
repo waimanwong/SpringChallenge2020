@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -34,43 +33,44 @@ public static class GameState
 
     public static void SetState(
         int myScore, int opponentScore, 
-        Dictionary<int, Pac> myVisiblePacs, 
-        Dictionary<int, Pac> enemyVisiblePacs,
+        Dictionary<int, Pac> myVisiblePacsById, 
+        Dictionary<int, Pac> enemyVisiblePacsById,
         Dictionary<(int, int), Pellet> visiblePellets)
     {
         GameState.myScore = myScore;
         GameState.opponentScore = opponentScore;
 
-        RemoveMyDeadPacman(myVisiblePacs);
+        RemoveMyDeadPacman(myVisiblePacsById);
 
-        foreach (var kvp in myVisiblePacs)
+        foreach (var kvp in myVisiblePacsById)
         {
             var pacId = kvp.Key;
             var visiblePac = kvp.Value;
 
-            if(myPacs.ContainsKey(pacId) == false)
+            HasVisitedPosition(visiblePac);
+
+            if (myPacs.ContainsKey(pacId) == false)
             {
                 myPacs[pacId] = visiblePac;
             }
             else
             {
-                myPacs[pacId].UpdateState(visiblePac, visiblePellets);
-                
+                myPacs[pacId].UpdateState(visiblePac, myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
             }
 
-            HasVisitedPosition(visiblePac);
+            myPacs[pacId].SetVisiblePellets(myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
         }
 
-        GameState.enemyPacs = enemyVisiblePacs;
+        GameState.enemyPacs = enemyVisiblePacsById;
         GameState.visiblePellets = visiblePellets;
     }
 
-    private static void RemoveMyDeadPacman(Dictionary<int, Pac> myVisiblePacs)
+    private static void RemoveMyDeadPacman(Dictionary<int, Pac> myVisiblePacsById)
     {
         foreach (var kvp in myPacs)
         {
             var myPacId = kvp.Key;
-            if (myVisiblePacs.ContainsKey(myPacId) == false)
+            if (myVisiblePacsById.ContainsKey(myPacId) == false)
             {
                 myPacs.Remove(myPacId);
             }
