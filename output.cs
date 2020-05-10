@@ -12,7 +12,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 
 
- // LastEdited: 10/05/2020 12:43 
+ // LastEdited: 10/05/2020 13:26 
 
 
 
@@ -132,20 +132,12 @@ public class GameAI
                     {
                         pac.CollectPellet();
                     }
-                    else
-                    {
-                        //Already assigned a move, continue
-                    }
                     break;
 
                 case Behavior.RandomMove:
                     if (pac.HasAction == false)
                     {
                         pac.RandomMoveTo(random);
-                    }
-                    else
-                    {
-                        //Already assigned a move, continue
                     }
                     break;
             }

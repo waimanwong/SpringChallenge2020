@@ -28,20 +28,12 @@ public class GameAI
                     {
                         pac.CollectPellet();
                     }
-                    else
-                    {
-                        //Already assigned a move, continue
-                    }
                     break;
 
                 case Behavior.RandomMove:
                     if (pac.HasAction == false)
                     {
                         pac.RandomMoveTo(random);
-                    }
-                    else
-                    {
-                        //Already assigned a move, continue
                     }
                     break;
             }
