@@ -40,10 +40,7 @@ public class Pac: Position
 
     }
 
-    public void UpdateState(Pac visiblePac, 
-        Dictionary<int, Pac> myVisiblePacs,
-        Dictionary<int, Pac> enemyVisiblePacs, 
-        Dictionary<(int, int), Pellet> visiblePellets)
+    public void UpdateState(Pac visiblePac)
     {
         CheckIfBlocked(visiblePac);
 
@@ -55,7 +52,6 @@ public class Pac: Position
         this.abilityCooldown = visiblePac.abilityCooldown;
 
         CheckCurrentActionCompletion();
-
     }
 
     private void CheckIfBlocked(Pac visiblePac)

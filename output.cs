@@ -11,7 +11,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 
 
- // LastEdited: 10/05/2020 2:12 
+ // LastEdited: 10/05/2020 11:49 
 
 
 
@@ -233,7 +233,7 @@ public static class GameState
             }
             else
             {
-                myPacs[pacId].UpdateState(visiblePac, myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
+                myPacs[pacId].UpdateState(visiblePac);
             }
 
             myPacs[pacId].SetVisiblePellets(myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
@@ -422,10 +422,7 @@ public class Pac: Position
 
     }
 
-    public void UpdateState(Pac visiblePac, 
-        Dictionary<int, Pac> myVisiblePacs,
-        Dictionary<int, Pac> enemyVisiblePacs, 
-        Dictionary<(int, int), Pellet> visiblePellets)
+    public void UpdateState(Pac visiblePac)
     {
         CheckIfBlocked(visiblePac);
 
@@ -437,7 +434,6 @@ public class Pac: Position
         this.abilityCooldown = visiblePac.abilityCooldown;
 
         CheckCurrentActionCompletion();
-
     }
 
     private void CheckIfBlocked(Pac visiblePac)

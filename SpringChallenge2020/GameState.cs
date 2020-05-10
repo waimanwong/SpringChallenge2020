@@ -55,7 +55,7 @@ public static class GameState
             }
             else
             {
-                myPacs[pacId].UpdateState(visiblePac, myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
+                myPacs[pacId].UpdateState(visiblePac);
             }
 
             myPacs[pacId].SetVisiblePellets(myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
