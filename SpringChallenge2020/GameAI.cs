@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
 
 public class GameAI
 {
@@ -16,63 +17,36 @@ public class GameAI
             if (pac.abilityCooldown == 0)
             {
                 pac.ActivateSpeed();
+                continue;
             }
-            else
+            
+            switch(pac.Behavior)
             {
-                if (pac.IsBlocked)
-                {
-                    Unblock(pac, random);
-                }
-                else
-                {
-                    if(pac.Behavior == Behavior.RandomMove)
-                    {
-                        if (pac.bestDirectionForPellets != null)
-                        {
-                            var choosenDirection = pac.bestDirectionForPellets.Value;
-                            
-                            var cell = Map.Cells[pac.Coord].Neighbors[choosenDirection];
-                            pac.CollectPelletTo(cell.x, cell.y);
-                        }
-                    }
+                case Behavior.CollectPellet:
 
+                    if(pac.HasAction == false)
+                    {
+                        pac.CollectPellet();
+                    }
+                    else
+                    {
+                        //Already assigned a move, continue
+                    }
+                    break;
+
+                case Behavior.RandomMove:
                     if (pac.HasAction == false)
                     {
-                        // Assign a move to this pac
-                        
-                        AssignMoveToPac(pac, random);
+                        pac.RandomMoveTo(random);
                     }
-                }
+                    else
+                    {
+                        //Already assigned a move, continue
+                    }
+                    break;
             }
+                
         }
     }
 
-    private void Unblock(Pac pac, Random random)
-    {
-        Player.Debug($"Unblock {pac.pacId.ToString()}");
-        pac.RandomMoveTo(random);
-    }
-
-    private void AssignMoveToPac(Pac pac, Random random)
-    {
-        Player.Debug($"Assign a move to this pac {pac.pacId.ToString()}");
-        if (pac.bestDirectionForPellets != null)
-        {
-            var choosenDirection = pac.bestDirectionForPellets.Value;
-            //var pelletsToCollect = pac.visiblePellets[choosenDirection];
-
-            //var lastPellet = pelletsToCollect.Peek();
-
-            //pac.CollectPelletTo(lastPellet.x, lastPellet.y);
-
-
-            var cell = Map.Cells[pac.Coord].Neighbors[choosenDirection];
-            pac.CollectPelletTo(cell.x, cell.y);
-
-        }
-        else
-        {
-            pac.RandomMoveTo(random);
-        }
-    }
 }
