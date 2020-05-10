@@ -21,8 +21,6 @@ public class Pac: Position
     public int abilityCooldown; // unused in wood leagues
 
     private Action currentAction;
-
-    private Dictionary<Direction, Queue<Pellet>> visiblePellets = new Dictionary<Direction, Queue<Pellet>>();
     public Direction? bestDirectionForPellets;
 
     private Behavior _behavior;
@@ -107,24 +105,27 @@ public class Pac: Position
     private void SetBestDirectionForPellets(Dictionary<int, Pac> myVisiblePacsById, Dictionary<(int, int), Pellet> visiblePellets)
     {
         bestDirectionForPellets = null;
-        this.visiblePellets.Clear();
 
-        int bestScore = 0;
+        double bestScore = 0;
 
         var myVisiblePacs = myVisiblePacsById.Values
             .ToDictionary(keySelector: pac => pac.Coord, elementSelector: pac => pac);
 
         foreach (var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West })
         {
+            
+            var distance = 0;
             var currentCell = Map.Cells[(this.x, this.y)];
-            var pellets = new Queue<Pellet>();
+            double score = 0;
 
             while (currentCell.Neighbors.TryGetValue(direction, out var nextCell))
             {
+                distance += 1;
                 currentCell = nextCell;
 
                 if (myVisiblePacs.TryGetValue(currentCell.Coord, out var myBlockingPac))
                 {
+                    //TO DO: more complicated logic (if enemy ...)
                     //Block in one way
                     if (myBlockingPac.x < this.x || myBlockingPac.y < this.y)
                     {
@@ -134,12 +135,9 @@ public class Pac: Position
 
                 if (visiblePellets.TryGetValue(currentCell.Coord, out var visiblePellet))
                 {
-                    pellets.Enqueue(visiblePellet);
+                    score += (visiblePellet.value * Math.Pow(10, -distance));
                 }
             }
-
-            this.visiblePellets[direction] = pellets;
-            int score = pellets.Sum(p => p.value);
 
             if (score > bestScore)
             {
