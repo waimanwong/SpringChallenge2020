@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 public static class GameState
@@ -14,10 +16,19 @@ public static class GameState
 
     public static HashSet<(int, int)> PositionsToVisit;
 
+    private static int turn;
+
+    /// <summary>
+    /// type that cannot be killed or empty
+    /// </summary>
+    public static string RecommendedType;
+
     static GameState()
     {
         myPacs = new Dictionary<int, Pac>();
     }
+
+    public static bool FirstTurn => turn == 1;
 
     public static void InitializeRemainingCellsToVisit()
     {
@@ -32,11 +43,13 @@ public static class GameState
     }
 
     public static void SetState(
+        int turn,
         int myScore, int opponentScore, 
         Dictionary<int, Pac> myVisiblePacsById, 
         Dictionary<int, Pac> enemyVisiblePacsById,
         Dictionary<(int, int), Pellet> visiblePellets)
     {
+        GameState.turn = turn;
         GameState.myScore = myScore;
         GameState.opponentScore = opponentScore;
 
@@ -63,6 +76,16 @@ public static class GameState
 
         GameState.enemyPacs = enemyVisiblePacsById;
         GameState.visiblePellets = visiblePellets;
+
+
+        if (turn == 1)
+        {
+            if (TypeAnalyzer.TryGetDominantType(myPacs.Values.Select(p => p.typeId).ToList(), out var dominantType))
+            {
+                GameState.RecommendedType = dominantType;
+            }
+        }
+
     }
 
     private static void RemoveMyDeadPacman(Dictionary<int, Pac> myVisiblePacsById)

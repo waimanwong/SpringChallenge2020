@@ -21,7 +21,9 @@ public class Pac: Position
 
     private Move currentMove;
     private bool activateSpeed = false;
-    
+
+    private string recommendedType;
+
     public Direction? bestDirectionForPellets;
 
     private Behavior _behavior;
@@ -65,6 +67,7 @@ public class Pac: Position
         this.abilityCooldown = visiblePac.abilityCooldown;
 
         this.activateSpeed = false;
+        this.recommendedType = string.Empty;
 
         CheckCurrentMoveCompletion();
     }
@@ -115,7 +118,9 @@ public class Pac: Position
         return this.Behavior;
     }
 
-    private void SetBestDirectionForPellets(Dictionary<int, Pac> myVisiblePacsById, Dictionary<(int, int), Pellet> visiblePellets)
+    private void SetBestDirectionForPellets(
+        Dictionary<int, Pac> myVisiblePacsById, 
+        Dictionary<(int, int), Pellet> visiblePellets)
     {
         bestDirectionForPellets = null;
 
@@ -218,8 +223,11 @@ public class Pac: Position
         var (targetX, targetY) = GameState.GetRandomCellToVisit(random);
 
         this.currentMove = new Move(this.pacId, targetX, targetY);
+    }
 
-        Player.Debug($"\tRandomMoveTo ({targetX},{targetY})");
+    public void SwitchToType(string recommendedType)
+    {
+        this.recommendedType = recommendedType;
     }
 
     public void ActivateSpeed()
@@ -229,6 +237,11 @@ public class Pac: Position
 
     public string GetCommand()
     {
+        if(string.IsNullOrEmpty(this.recommendedType) == false)
+        {
+            return $"SWITCH {this.pacId.ToString()} {this.recommendedType}";
+        }
+
         if( this.activateSpeed )
         {
             return $"SPEED {this.pacId.ToString()} {this.Behavior.ToString()}";
@@ -239,55 +252,5 @@ public class Pac: Position
         return $"{this.currentMove.ToString()} {message}";
     }
 
-    public const string ROCK = "ROCK";
-    public const string PAPER = "PAPER";
-    public const string SCISSORS = "SCISSORS";
-
-    public int Compare(Pac enemyPac)
-    {
-        var myType = this.typeId;
-        var enemyType = enemyPac.typeId;
-
-        switch(myType)
-        {
-            case ROCK:
-                switch(enemyType)
-                {
-                    case ROCK:
-                        return 0;
-                    case PAPER:
-                        return -1;
-                    case SCISSORS:
-                        return 1;
-                }
-                break;
-
-            case "PAPER":
-                switch (enemyType)
-                {
-                    case ROCK:
-                        return 1;
-                    case PAPER:
-                        return 0;
-                    case SCISSORS:
-                        return -1;
-                }
-                break;
-
-            case "SCISSORS":
-                switch (enemyType)
-                {
-                    case ROCK:
-                        return -1;
-                    case PAPER:
-                        return 1;
-                    case SCISSORS:
-                        return 0;
-                }
-                break;
-        }
-
-        throw new Exception();
-    }
 
 }

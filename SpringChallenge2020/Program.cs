@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 
@@ -33,11 +32,13 @@ public class Player
 
         GameState.InitializeRemainingCellsToVisit();
 
-        bool isFirstTurn = true;
+        int turn = 0;
 
         // game loop
         while (true)
         {
+            turn++;
+
             inputs = Console.ReadLine().Split(' ');
 
             var watch = Stopwatch.StartNew();
@@ -77,7 +78,7 @@ public class Player
                 }
             }
 
-            if(isFirstTurn)
+            if(turn == 1)
             {
                 //Map is symetric so we know where the enemies are
                 foreach(var kvp in myPacs)
@@ -91,9 +92,7 @@ public class Player
                         enemyPacs.Add(myPacId, symetricPac);
                     }
                 }
-                isFirstTurn = false;
-
-                Player.Debug($"{enemyPacs.Count()}");
+                
             }
 
             int visiblePelletCount = int.Parse(Console.ReadLine()); // all pellets in sight
@@ -110,7 +109,7 @@ public class Player
                 pellets.Add((x,y), new Pellet(x, y, value));
             }
 
-            GameState.SetState(myScore, opponentScore, myPacs, enemyPacs, pellets);
+            GameState.SetState(turn, myScore, opponentScore, myPacs, enemyPacs, pellets);
 
             GameState.Debug();
 

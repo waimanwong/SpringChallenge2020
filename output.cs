@@ -3,15 +3,15 @@ using System.Collections.Generic;
 using System;
 using System.Linq;
 using System.Runtime.InteropServices.ComTypes;
+using System.ComponentModel.Design;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Collections;
 using System.ComponentModel.DataAnnotations;
-using System.Runtime.CompilerServices;
-using System.ComponentModel;
 using System.Diagnostics;
 
 
- // LastEdited: 10/05/2020 16:43 
+ // LastEdited: 11/05/2020 14:11 
 
 
 
@@ -74,6 +74,18 @@ public class GameAI
             var pacId = kvp.Key;
             var pac = kvp.Value;
 
+            if(GameState.FirstTurn)
+            {
+                if(string.IsNullOrEmpty(GameState.RecommendedType) == false)
+                {
+                    if(pac.typeId != GameState.RecommendedType)
+                    {
+                        pac.SwitchToType(GameState.RecommendedType);
+                        continue;
+                    }
+                }
+            }
+
             if (pac.abilityCooldown == 0)
             {
                 pac.ActivateSpeed();
@@ -114,10 +126,19 @@ public static class GameState
 
     public static HashSet<(int, int)> PositionsToVisit;
 
+    private static int turn;
+
+    /// <summary>
+    /// type that cannot be killed or empty
+    /// </summary>
+    public static string RecommendedType;
+
     static GameState()
     {
         myPacs = new Dictionary<int, Pac>();
     }
+
+    public static bool FirstTurn => turn == 1;
 
     public static void InitializeRemainingCellsToVisit()
     {
@@ -132,11 +153,13 @@ public static class GameState
     }
 
     public static void SetState(
+        int turn,
         int myScore, int opponentScore, 
         Dictionary<int, Pac> myVisiblePacsById, 
         Dictionary<int, Pac> enemyVisiblePacsById,
         Dictionary<(int, int), Pellet> visiblePellets)
     {
+        GameState.turn = turn;
         GameState.myScore = myScore;
         GameState.opponentScore = opponentScore;
 
@@ -163,6 +186,16 @@ public static class GameState
 
         GameState.enemyPacs = enemyVisiblePacsById;
         GameState.visiblePellets = visiblePellets;
+
+
+        if (turn == 1)
+        {
+            if (TypeAnalyzer.TryGetDominantType(myPacs.Values.Select(p => p.typeId).ToList(), out var dominantType))
+            {
+                GameState.RecommendedType = dominantType;
+            }
+        }
+
     }
 
     private static void RemoveMyDeadPacman(Dictionary<int, Pac> myVisiblePacsById)
@@ -379,7 +412,9 @@ public class Pac: Position
 
     private Move currentMove;
     private bool activateSpeed = false;
-    
+
+    private string recommendedType;
+
     public Direction? bestDirectionForPellets;
 
     private Behavior _behavior;
@@ -423,6 +458,7 @@ public class Pac: Position
         this.abilityCooldown = visiblePac.abilityCooldown;
 
         this.activateSpeed = false;
+        this.recommendedType = string.Empty;
 
         CheckCurrentMoveCompletion();
     }
@@ -473,7 +509,9 @@ public class Pac: Position
         return this.Behavior;
     }
 
-    private void SetBestDirectionForPellets(Dictionary<int, Pac> myVisiblePacsById, Dictionary<(int, int), Pellet> visiblePellets)
+    private void SetBestDirectionForPellets(
+        Dictionary<int, Pac> myVisiblePacsById, 
+        Dictionary<(int, int), Pellet> visiblePellets)
     {
         bestDirectionForPellets = null;
 
@@ -576,8 +614,11 @@ public class Pac: Position
         var (targetX, targetY) = GameState.GetRandomCellToVisit(random);
 
         this.currentMove = new Move(this.pacId, targetX, targetY);
+    }
 
-        Player.Debug($"\tRandomMoveTo ({targetX},{targetY})");
+    public void SwitchToType(string recommendedType)
+    {
+        this.recommendedType = recommendedType;
     }
 
     public void ActivateSpeed()
@@ -587,6 +628,11 @@ public class Pac: Position
 
     public string GetCommand()
     {
+        if(string.IsNullOrEmpty(this.recommendedType) == false)
+        {
+            return $"SWITCH {this.pacId.ToString()} {this.recommendedType}";
+        }
+
         if( this.activateSpeed )
         {
             return $"SPEED {this.pacId.ToString()} {this.Behavior.ToString()}";
@@ -597,56 +643,6 @@ public class Pac: Position
         return $"{this.currentMove.ToString()} {message}";
     }
 
-    public const string ROCK = "ROCK";
-    public const string PAPER = "PAPER";
-    public const string SCISSORS = "SCISSORS";
-
-    public int Compare(Pac enemyPac)
-    {
-        var myType = this.typeId;
-        var enemyType = enemyPac.typeId;
-
-        switch(myType)
-        {
-            case ROCK:
-                switch(enemyType)
-                {
-                    case ROCK:
-                        return 0;
-                    case PAPER:
-                        return -1;
-                    case SCISSORS:
-                        return 1;
-                }
-                break;
-
-            case "PAPER":
-                switch (enemyType)
-                {
-                    case ROCK:
-                        return 1;
-                    case PAPER:
-                        return 0;
-                    case SCISSORS:
-                        return -1;
-                }
-                break;
-
-            case "SCISSORS":
-                switch (enemyType)
-                {
-                    case ROCK:
-                        return -1;
-                    case PAPER:
-                        return 1;
-                    case SCISSORS:
-                        return 0;
-                }
-                break;
-        }
-
-        throw new Exception();
-    }
 
 }
 public class Pellet: Position
@@ -740,11 +736,13 @@ public class Player
 
         GameState.InitializeRemainingCellsToVisit();
 
-        bool isFirstTurn = true;
+        int turn = 0;
 
         // game loop
         while (true)
         {
+            turn++;
+
             inputs = Console.ReadLine().Split(' ');
 
             var watch = Stopwatch.StartNew();
@@ -784,7 +782,7 @@ public class Player
                 }
             }
 
-            if(isFirstTurn)
+            if(turn == 1)
             {
                 //Map is symetric so we know where the enemies are
                 foreach(var kvp in myPacs)
@@ -798,9 +796,7 @@ public class Player
                         enemyPacs.Add(myPacId, symetricPac);
                     }
                 }
-                isFirstTurn = false;
-
-                Player.Debug($"{enemyPacs.Count()}");
+                
             }
 
             int visiblePelletCount = int.Parse(Console.ReadLine()); // all pellets in sight
@@ -817,7 +813,7 @@ public class Player
                 pellets.Add((x,y), new Pellet(x, y, value));
             }
 
-            GameState.SetState(myScore, opponentScore, myPacs, enemyPacs, pellets);
+            GameState.SetState(turn, myScore, opponentScore, myPacs, enemyPacs, pellets);
 
             GameState.Debug();
 
@@ -829,5 +825,78 @@ public class Player
             Console.WriteLine($"{actions} {watch.ElapsedMilliseconds.ToString()} ms"); // MOVE <pacId> <x> <y>
 
         }
+    }
+}
+
+public static class TypeAnalyzer
+{
+    public const string ROCK = "ROCK";
+    public const string PAPER = "PAPER";
+    public const string SCISSORS = "SCISSORS";
+
+    public static bool TryGetDominantType(List<string> types, out string dominantType)
+    {
+        dominantType = string.Empty;
+
+        var distinctTypes = types.Distinct().ToList();
+
+        if(distinctTypes.Count == 2)
+        {
+            dominantType = Compare(distinctTypes[0], distinctTypes[1]) > 0 ?
+                distinctTypes[0] :
+                distinctTypes[1];
+        }
+
+        return string.IsNullOrEmpty(dominantType) == false;
+    }
+
+    /// <summary>
+    /// return signednumber: myType - enemyType
+    /// </summary>
+    /// <param name="myType"></param>
+    /// <param name="enemyType"></param>
+    /// <returns></returns>
+    public static int Compare(string myType, string enemyType)
+    {   
+        switch (myType)
+        {
+            case ROCK:
+                switch (enemyType)
+                {
+                    case ROCK:
+                        return 0;
+                    case PAPER:
+                        return -1;
+                    case SCISSORS:
+                        return 1;
+                }
+                break;
+
+            case "PAPER":
+                switch (enemyType)
+                {
+                    case ROCK:
+                        return 1;
+                    case PAPER:
+                        return 0;
+                    case SCISSORS:
+                        return -1;
+                }
+                break;
+
+            case "SCISSORS":
+                switch (enemyType)
+                {
+                    case ROCK:
+                        return -1;
+                    case PAPER:
+                        return 1;
+                    case SCISSORS:
+                        return 0;
+                }
+                break;
+        }
+
+        throw new Exception();
     }
 }
