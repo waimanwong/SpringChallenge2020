@@ -11,7 +11,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 
 
- // LastEdited: 11/05/2020 22:12 
+ // LastEdited: 11/05/2020 22:17 
 
 
 
@@ -104,18 +104,6 @@ public class GameAI
             var pacId = kvp.Key;
             var pac = kvp.Value;
 
-            if(GameState.FirstTurn)
-            {
-                if(string.IsNullOrEmpty(GameState.RecommendedType) == false)
-                {
-                    if(pac.typeId != GameState.RecommendedType)
-                    {
-                        pac.SwitchToType(GameState.RecommendedType);
-                        continue;
-                    }
-                }
-            }
-
             if (pac.abilityCooldown == 0)
             {
                 pac.ActivateSpeed();
@@ -155,11 +143,6 @@ public static class GameState
     public static Dictionary<(int, int), Pellet> visiblePellets;
 
     private static int turn;
-
-    /// <summary>
-    /// type that cannot be killed or empty
-    /// </summary>
-    public static string RecommendedType;
 
     static GameState()
     {
@@ -211,15 +194,6 @@ public static class GameState
 
         GameState.enemyPacs = enemyVisiblePacsById;
         GameState.visiblePellets = visiblePellets;
-
-
-        if (turn == 1)
-        {
-            if (TypeAnalyzer.TryGetDominantType(myPacs.Values.Select(p => p.typeId).ToList(), out var dominantType))
-            {
-                GameState.RecommendedType = dominantType;
-            }
-        }
 
     }
 
@@ -879,22 +853,6 @@ public static class TypeAnalyzer
     public const string ROCK = "ROCK";
     public const string PAPER = "PAPER";
     public const string SCISSORS = "SCISSORS";
-
-    public static bool TryGetDominantType(List<string> types, out string dominantType)
-    {
-        dominantType = string.Empty;
-
-        var distinctTypes = types.Distinct().ToList();
-
-        if(distinctTypes.Count == 2)
-        {
-            dominantType = Compare(distinctTypes[0], distinctTypes[1]) > 0 ?
-                distinctTypes[0] :
-                distinctTypes[1];
-        }
-
-        return string.IsNullOrEmpty(dominantType) == false;
-    }
 
     /// <summary>
     /// return signednumber: myType - enemyType

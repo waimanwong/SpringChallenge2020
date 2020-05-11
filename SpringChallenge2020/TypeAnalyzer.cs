@@ -9,22 +9,6 @@ public static class TypeAnalyzer
     public const string PAPER = "PAPER";
     public const string SCISSORS = "SCISSORS";
 
-    public static bool TryGetDominantType(List<string> types, out string dominantType)
-    {
-        dominantType = string.Empty;
-
-        var distinctTypes = types.Distinct().ToList();
-
-        if(distinctTypes.Count == 2)
-        {
-            dominantType = Compare(distinctTypes[0], distinctTypes[1]) > 0 ?
-                distinctTypes[0] :
-                distinctTypes[1];
-        }
-
-        return string.IsNullOrEmpty(dominantType) == false;
-    }
-
     /// <summary>
     /// return signednumber: myType - enemyType
     /// </summary>

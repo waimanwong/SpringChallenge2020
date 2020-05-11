@@ -16,11 +16,6 @@ public static class GameState
 
     private static int turn;
 
-    /// <summary>
-    /// type that cannot be killed or empty
-    /// </summary>
-    public static string RecommendedType;
-
     static GameState()
     {
         myPacs = new Dictionary<int, Pac>();
@@ -71,15 +66,6 @@ public static class GameState
 
         GameState.enemyPacs = enemyVisiblePacsById;
         GameState.visiblePellets = visiblePellets;
-
-
-        if (turn == 1)
-        {
-            if (TypeAnalyzer.TryGetDominantType(myPacs.Values.Select(p => p.typeId).ToList(), out var dominantType))
-            {
-                GameState.RecommendedType = dominantType;
-            }
-        }
 
     }
 

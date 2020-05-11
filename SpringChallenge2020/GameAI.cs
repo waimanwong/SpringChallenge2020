@@ -14,18 +14,6 @@ public class GameAI
             var pacId = kvp.Key;
             var pac = kvp.Value;
 
-            if(GameState.FirstTurn)
-            {
-                if(string.IsNullOrEmpty(GameState.RecommendedType) == false)
-                {
-                    if(pac.typeId != GameState.RecommendedType)
-                    {
-                        pac.SwitchToType(GameState.RecommendedType);
-                        continue;
-                    }
-                }
-            }
-
             if (pac.abilityCooldown == 0)
             {
                 pac.ActivateSpeed();
