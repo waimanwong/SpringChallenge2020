@@ -30,8 +30,6 @@ public class Player
 
         Map.Set(width, height, rows);
 
-        GameState.InitializeRemainingCellsToVisit();
-
         int turn = 0;
 
         // game loop

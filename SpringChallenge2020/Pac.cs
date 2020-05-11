@@ -202,7 +202,7 @@ public class Pac: Position
             // priority to not visited
             foreach (var possibleNeighbor in possibleNeighbors)
             {
-                if(GameState.PositionsToVisit.Contains(possibleNeighbor))
+                if(Map.Cells[possibleNeighbor].PelletValue > 0)
                 {
                     //Second move here
                     this.currentMove = new Move(this.pacId, possibleNeighbor.Item1, possibleNeighbor.Item2);

@@ -11,7 +11,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 
 
- // LastEdited: 11/05/2020 14:11 
+ // LastEdited: 11/05/2020 21:55 
 
 
 
@@ -43,9 +43,39 @@ public class Cell: Position
 {
     public readonly Dictionary<Direction, Cell> Neighbors;
 
+    public static Dictionary<(int, int), Cell> CellWithSuperPellets = new Dictionary<(int, int), Cell>();
+
+    private int pelletValue;
+
+    public int PelletValue 
+    { 
+        get
+        {
+            return this.pelletValue;
+        }
+        set
+        {
+            var coord = this.Coord;
+            if(pelletValue == 10)
+            {
+                CellWithSuperPellets[coord] = this;
+            }
+            else if(pelletValue == 0)
+            {
+                if(CellWithSuperPellets.ContainsKey(coord))
+                {
+                    CellWithSuperPellets.Remove(coord);
+                }
+            }
+
+            this.pelletValue = value;
+        } 
+    } 
+
     public Cell(int x, int y): base(x,y)
     {
         Neighbors = new Dictionary<Direction, Cell>();
+        this.pelletValue = 1;
     }
 
     public override string ToString()
@@ -124,8 +154,6 @@ public static class GameState
 
     public static Dictionary<(int, int), Pellet> visiblePellets;
 
-    public static HashSet<(int, int)> PositionsToVisit;
-
     private static int turn;
 
     /// <summary>
@@ -140,16 +168,13 @@ public static class GameState
 
     public static bool FirstTurn => turn == 1;
 
-    public static void InitializeRemainingCellsToVisit()
-    {
-        PositionsToVisit = Map.Cells.Keys.ToHashSet();
-    }
-
     public static (int,int) GetRandomCellToVisit(Random random)
     {
-        var randomIndex = random.Next(PositionsToVisit.Count);
+        var positionsToVisit = Map.Cells.Values.Where(c => c.PelletValue == 1).ToArray();
 
-        return PositionsToVisit.ElementAt(randomIndex);
+        var randomIndex = random.Next(positionsToVisit.Length);
+
+        return positionsToVisit[randomIndex].Coord;
     }
 
     public static void SetState(
@@ -215,18 +240,40 @@ public static class GameState
         Dictionary<int, Pac> enemyVisiblePacsById,
         Dictionary<(int, int), Pellet> visiblePelletsByCoord)
     {
+        #region update high value pellets
+        //update for high value pellets
+        var superPelletCoords = visiblePelletsByCoord
+            .Where(kvp => kvp.Value.IsSuperPellet)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        foreach (var superPelletCoord in superPelletCoords)
+        {
+            Map.Cells[superPelletCoord].PelletValue = 10;
+        }
+
+        //update picked high value pellets
+        foreach(var kvp in Cell.CellWithSuperPellets)
+        {
+            var coord = kvp.Key;
+            if( visiblePelletsByCoord.ContainsKey(coord) ==  false)
+            {
+                //pellet got picked
+                Map.Cells[coord].PelletValue = 0;
+            }
+        }
+        #endregion
+
         var enemyKnownPositions = enemyVisiblePacsById.Values.Select(p => p.Coord).ToHashSet();
         var visiblePellets = visiblePelletsByCoord.Keys.ToHashSet();
 
         foreach (var kvp in myVisiblePacsById)
         {
             var visiblePac = kvp.Value;
-            var visitedCoord = (visiblePac.x, visiblePac.y);
+            var pacCoord = (visiblePac.x, visiblePac.y);
 
-            if (PositionsToVisit.Contains(visitedCoord))
-            {
-                PositionsToVisit.Remove(visitedCoord);
-            }
+            //pac position is visited
+            Map.Cells[pacCoord].PelletValue = 0;
 
             //Update based on the vision of the pac
             foreach (var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West })
@@ -243,25 +290,22 @@ public static class GameState
 
                     currentCell = nextCell;
 
-                    if (PositionsToVisit.Contains(currentCell.Coord))
-                    {
-                        var thereIsAnEnemyAtCurrentCell = enemyKnownPositions.Contains(currentCell.Coord);
-                        var thereIsNotPelletAtCurrentCell = visiblePellets.Contains(currentCell.Coord) == false;
+                    var thereIsAnEnemyAtCurrentCell = enemyKnownPositions.Contains(currentCell.Coord);
+                    var thereIsNotPelletAtCurrentCell = visiblePellets.Contains(currentCell.Coord) == false;
 
-                        if(thereIsAnEnemyAtCurrentCell || thereIsNotPelletAtCurrentCell)
-                        {
-                            //place is visited
-                            PositionsToVisit.Remove(currentCell.Coord);
-                        }
+                    if(thereIsAnEnemyAtCurrentCell || thereIsNotPelletAtCurrentCell)
+                    {
+                        //place is visited
+                        Map.Cells[currentCell.Coord].PelletValue = 0;
                     }
+                    
                 }
             }
         }
 
         foreach(var enemyKnownPosition in enemyKnownPositions)
         {
-            if (PositionsToVisit.Contains(enemyKnownPosition))
-                PositionsToVisit.Remove(enemyKnownPosition);
+            Map.Cells[enemyKnownPosition].PelletValue = 0;
         }
     }
 
@@ -281,13 +325,18 @@ public static class GameState
                 var coord = (x, y);
                 if (Map.Cells.ContainsKey(coord))
                 {
-                    if(PositionsToVisit.Contains(coord))
+                    var cellValue = Map.Cells[coord].PelletValue;
+                    switch(cellValue)
                     {
-                        row.Append('.');
-                    }
-                    else
-                    {
-                        row.Append(' ');
+                        case 1:
+                            row.Append('.');
+                            break;
+                        case 0:
+                            row.Append(' ');
+                            break;
+                        case 10:
+                            row.Append('o');
+                            break;
                     }
 
                     //if (visiblePellets.TryGetValue(coord, out var pellet))
@@ -593,7 +642,7 @@ public class Pac: Position
             // priority to not visited
             foreach (var possibleNeighbor in possibleNeighbors)
             {
-                if(GameState.PositionsToVisit.Contains(possibleNeighbor))
+                if(Map.Cells[possibleNeighbor].PelletValue > 0)
                 {
                     //Second move here
                     this.currentMove = new Move(this.pacId, possibleNeighbor.Item1, possibleNeighbor.Item2);
@@ -733,8 +782,6 @@ public class Player
         }
 
         Map.Set(width, height, rows);
-
-        GameState.InitializeRemainingCellsToVisit();
 
         int turn = 0;
 
