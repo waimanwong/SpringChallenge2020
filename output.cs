@@ -11,7 +11,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 
 
- // LastEdited: 11/05/2020 22:04 
+ // LastEdited: 11/05/2020 22:12 
 
 
 
@@ -70,7 +70,7 @@ public class Cell: Position
 
             this.pelletValue = value;
         } 
-    } 
+    }
 
     public Cell(int x, int y): base(x,y)
     {
@@ -328,33 +328,30 @@ public static class GameState
                     var cellValue = Map.Cells[coord].PelletValue;
                     switch(cellValue)
                     {
-                        case 1:
-                            row.Append('.');
-                            break;
-                        case 0:
-                            row.Append(' ');
-                            break;
                         case 10:
                             row.Append('o');
                             break;
-                    }
 
-                    //if (visiblePellets.TryGetValue(coord, out var pellet))
-                    //{
-                    //    row.Append(pellet.value == 1 ? 'o' : 'O');
-                    //}
-                    //else if(myPacs.TryGetValue(coord, out var myPac))
-                    //{
-                    //    row.Append(myPac.pacId.ToString());
-                    //}
-                    //else if (enemyPacs.TryGetValue(coord, out var enemyPac))
-                    //{
-                    //    row.Append('!');
-                    //}
-                    //else
-                    //{
-                    //    row.Append(' ');
-                    //}
+                        case 1:
+                            row.Append('.');
+                            break;
+                        
+                        case 0:
+                            if (myPacs.TryGetValue(coord, out var myPac))
+                            {
+                                row.Append(myPac.pacId.ToString());
+                            }
+                            else if (enemyPacs.TryGetValue(coord, out var enemyPac))
+                            {
+                                row.Append('!');
+                            }
+                            else
+                            {
+                                row.Append(' ');
+                            }
+                            break;
+
+                    }
                 }
                 else
                     row.Append('#');

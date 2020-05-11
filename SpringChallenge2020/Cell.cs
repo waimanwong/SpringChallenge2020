@@ -31,7 +31,7 @@ public class Cell: Position
 
             this.pelletValue = value;
         } 
-    } 
+    }
 
     public Cell(int x, int y): base(x,y)
     {
