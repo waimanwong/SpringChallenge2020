@@ -24,7 +24,7 @@ public class Pac: Position
 
     private string recommendedType;
 
-    public Direction? bestDirectionForPellets;
+    public Direction? bestDirection;
 
     private Behavior _behavior;
     private bool isBlocked = false;
@@ -104,9 +104,9 @@ public class Pac: Position
             return this.Behavior;
         }
         
-        SetBestDirectionForPellets(myVisiblePacsById, visiblePellets);
+        SetBestDirection(myVisiblePacsById, visiblePellets);
 
-        if (this.bestDirectionForPellets == null)
+        if (this.bestDirection == null)
         {
             this.Behavior = Behavior.RandomMove;
         }
@@ -118,11 +118,11 @@ public class Pac: Position
         return this.Behavior;
     }
 
-    private void SetBestDirectionForPellets(
+    private void SetBestDirection(
         Dictionary<int, Pac> myVisiblePacsById, 
         Dictionary<(int, int), Pellet> visiblePellets)
     {
-        bestDirectionForPellets = null;
+        bestDirection = null;
 
         double bestScore = 0;
 
@@ -168,7 +168,7 @@ public class Pac: Position
             if (score > bestScore)
             {
                 bestScore = score;
-                bestDirectionForPellets = direction;
+                bestDirection = direction;
             }
         }
     }
@@ -177,7 +177,7 @@ public class Pac: Position
 
     public void CollectPellet()
     {
-        var choosenDirection = this.bestDirectionForPellets.Value;
+        var choosenDirection = this.bestDirection.Value;
         var cell = Map.Cells[this.Coord].Neighbors[choosenDirection];
         
         this.currentMove = new Move(this.pacId, cell.x, cell.y);
