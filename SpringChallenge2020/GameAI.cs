@@ -20,24 +20,10 @@ public class GameAI
                 continue;
             }
             
-            switch(pac.Behavior)
+            if(pac.HasMove == false)
             {
-                case Behavior.CollectPellet:
-
-                    if(pac.HasMove == false)
-                    {
-                        pac.CollectPellet();
-                    }
-                    break;
-
-                case Behavior.RandomMove:
-                    if (pac.HasMove == false)
-                    {
-                        pac.RandomMoveTo(random);
-                    }
-                    break;
-            }
-                
+                pac.Move();
+            } 
         }
     }
 

@@ -61,7 +61,7 @@ public static class GameState
                 myPacs[pacId].UpdateState(visiblePac);
             }
 
-            var newBehavior = myPacs[pacId].ComputeBehavior(myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
+            myPacs[pacId].ComputeBestDirection(myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
         }
 
         GameState.enemyPacs = enemyVisiblePacsById;

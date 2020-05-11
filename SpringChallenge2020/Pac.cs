@@ -2,13 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 
-
-public enum Behavior
-{
-    RandomMove,
-    CollectPellet
-}
-
 public class Pac: Position
 {
     public readonly int pacId;
@@ -22,26 +15,11 @@ public class Pac: Position
     private Move currentMove;
     private bool activateSpeed = false;
 
-    private string recommendedType;
+    private string newType;
 
     public Direction? bestDirection;
 
-    private Behavior _behavior;
     private bool isBlocked = false;
-
-
-    public Behavior Behavior { 
-        get { return _behavior; }
-        private set
-        {
-            if( this._behavior != value)
-            {
-                //Changing behavior => cancel current action
-                currentMove = null;
-            }
-            this._behavior = value;
-        } 
-    }
 
     public Pac(int pacId, bool mine, int x, int y, string typeId, int speedTurnsLeft, int abilityCooldown): base(x,y)
     {
@@ -50,9 +28,6 @@ public class Pac: Position
         this.typeId = typeId;
         this.speedTurnsLeft = speedTurnsLeft;
         this.abilityCooldown = abilityCooldown;
-
-        this.Behavior = Behavior.RandomMove;
-
     }
 
     public void UpdateState(Pac visiblePac)
@@ -67,7 +42,7 @@ public class Pac: Position
         this.abilityCooldown = visiblePac.abilityCooldown;
 
         this.activateSpeed = false;
-        this.recommendedType = string.Empty;
+        this.newType = string.Empty;
 
         CheckCurrentMoveCompletion();
     }
@@ -92,39 +67,13 @@ public class Pac: Position
         }
     }
 
-    public Behavior ComputeBehavior(
+    public void ComputeBestDirection(
         Dictionary<int, Pac> myVisiblePacsById,
         Dictionary<int, Pac> enemyVisiblePacsbyId, 
         Dictionary<(int, int), Pellet> visiblePellets)
     {
-        if (isBlocked)
-        {
-            Player.Debug($"{pacId} is blocked.");
-            this.Behavior = Behavior.RandomMove;
-            return this.Behavior;
-        }
-        
-        SetBestDirection(myVisiblePacsById, enemyVisiblePacsbyId, visiblePellets);
-
-        if (this.bestDirection == null)
-        {
-            this.Behavior = Behavior.RandomMove;
-        }
-        else
-        {
-            this.Behavior = Behavior.CollectPellet;
-        }
-
-        return this.Behavior;
-    }
-
-    private void SetBestDirection(
-        Dictionary<int, Pac> myVisiblePacsById, 
-        Dictionary<int, Pac> enemyVisiblePacsbyId,
-        Dictionary<(int, int), Pellet> visiblePellets)
-    {
-        bestDirection = null;
-        double bestScore = 0;
+        this.bestDirection = null;
+        double bestScore = int.MinValue;
 
         var myVisiblePacs = myVisiblePacsById.Values
             .ToDictionary(keySelector: pac => pac.Coord, elementSelector: pac => pac);
@@ -132,16 +81,23 @@ public class Pac: Position
         var enemyVisiblePacs = enemyVisiblePacsbyId.Values
             .ToDictionary(keySelector: pac => pac.Coord, elementSelector: pac => pac);
 
+        Player.Debug($"Compute best direction for pac {this.pacId}");
+
         //Compute best direction
         foreach (var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West })
         {   
+            if(Map.Cells[(this.x, this.y)].Neighbors.ContainsKey(direction) == false)
+            {
+                //can not go in this direction, it is a wall
+                continue;
+            }
+
             var distance = 0;
             var currentCell = Map.Cells[(this.x, this.y)];
             double directionScore = 0;
             var visitedPosition = new HashSet<(int, int)>();
 
             visitedPosition.Add(currentCell.Coord);
-
             while (currentCell.Neighbors.TryGetValue(direction, out var nextCell))
             {
                 if (visitedPosition.Contains(nextCell.Coord))
@@ -160,8 +116,11 @@ public class Pac: Position
 
                 if(enemyVisiblePacs.TryGetValue(currentCell.Coord, out var enemyPac))
                 {
-                    //by default it is a threat
-                    directionScore -= 100;
+                    //by default it is a threat if too close
+                    if (distance < 4)
+                    {
+                        directionScore -= 100;
+                    }
                     break;
                 }
 
@@ -171,17 +130,20 @@ public class Pac: Position
                 }
             }
 
+            Player.Debug($"\tDirection: {direction}: {directionScore.ToString()}");
+
             if (directionScore > bestScore)
             {
                 bestScore = directionScore;
                 bestDirection = direction;
             }
         }
+
     }
 
     public bool HasMove => currentMove != null;
 
-    public void CollectPellet()
+    public void Move()
     {
         var choosenDirection = this.bestDirection.Value;
         var cell = Map.Cells[this.Coord].Neighbors[choosenDirection];
@@ -200,8 +162,6 @@ public class Pac: Position
                 this.currentMove = new Move(this.pacId, secondCell.x, secondCell.y);
                 return;
             }
-
-            this.Behavior = Behavior.RandomMove;
 
             var possibleNeighbors = Map.Cells[this.Coord].Neighbors.Select(kvp => kvp.Value.Coord).ToHashSet();
                 
@@ -224,16 +184,9 @@ public class Pac: Position
 
     }
 
-    public void RandomMoveTo(Random random)
+    public void SwitchToType(string newType)
     {
-        var (targetX, targetY) = GameState.GetRandomCellToVisit(random);
-
-        this.currentMove = new Move(this.pacId, targetX, targetY);
-    }
-
-    public void SwitchToType(string recommendedType)
-    {
-        this.recommendedType = recommendedType;
+        this.newType = newType;
     }
 
     public void ActivateSpeed()
@@ -243,19 +196,17 @@ public class Pac: Position
 
     public string GetCommand()
     {
-        if(string.IsNullOrEmpty(this.recommendedType) == false)
+        if(string.IsNullOrEmpty(this.newType) == false)
         {
-            return $"SWITCH {this.pacId.ToString()} {this.recommendedType}";
+            return $"SWITCH {this.pacId.ToString()} {this.newType}";
         }
 
         if( this.activateSpeed )
         {
-            return $"SPEED {this.pacId.ToString()} {this.Behavior.ToString()}";
+            return $"SPEED {this.pacId.ToString()}";
         }
 
-        var message = $"{this.Behavior.ToString().First()} {this.currentMove.x} {this.currentMove.y}";
-
-        return $"{this.currentMove.ToString()} {message}";
+        return $"{this.currentMove.ToString()}";
     }
 
 
