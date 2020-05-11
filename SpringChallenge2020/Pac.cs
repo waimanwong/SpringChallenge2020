@@ -104,7 +104,7 @@ public class Pac: Position
             return this.Behavior;
         }
         
-        SetBestDirection(myVisiblePacsById, visiblePellets);
+        SetBestDirection(myVisiblePacsById, enemyVisiblePacsbyId, visiblePellets);
 
         if (this.bestDirection == null)
         {
@@ -120,21 +120,24 @@ public class Pac: Position
 
     private void SetBestDirection(
         Dictionary<int, Pac> myVisiblePacsById, 
+        Dictionary<int, Pac> enemyVisiblePacsbyId,
         Dictionary<(int, int), Pellet> visiblePellets)
     {
         bestDirection = null;
-
         double bestScore = 0;
 
         var myVisiblePacs = myVisiblePacsById.Values
             .ToDictionary(keySelector: pac => pac.Coord, elementSelector: pac => pac);
 
+        var enemyVisiblePacs = enemyVisiblePacsbyId.Values
+            .ToDictionary(keySelector: pac => pac.Coord, elementSelector: pac => pac);
+
+        //Compute best direction
         foreach (var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West })
-        {
-            
+        {   
             var distance = 0;
             var currentCell = Map.Cells[(this.x, this.y)];
-            double score = 0;
+            double directionScore = 0;
             var visitedPosition = new HashSet<(int, int)>();
 
             visitedPosition.Add(currentCell.Coord);
@@ -151,23 +154,26 @@ public class Pac: Position
 
                 if (myVisiblePacs.TryGetValue(currentCell.Coord, out var myBlockingPac))
                 {
-                    //TO DO: more complicated logic (if enemy ...)
-                    //Block in one way
-                    if (myBlockingPac.x < this.x || myBlockingPac.y < this.y)
-                    {
-                        break;
-                    }
+                    //There is a pac of mine in this which blocks 
+                    break;
+                }
+
+                if(enemyVisiblePacs.TryGetValue(currentCell.Coord, out var enemyPac))
+                {
+                    //by default it is a threat
+                    directionScore -= 100;
+                    break;
                 }
 
                 if (visiblePellets.TryGetValue(currentCell.Coord, out var visiblePellet))
                 {
-                    score += (visiblePellet.value * Math.Pow(10, -distance));
+                    directionScore += (visiblePellet.value * Math.Pow(10, -distance));
                 }
             }
 
-            if (score > bestScore)
+            if (directionScore > bestScore)
             {
-                bestScore = score;
+                bestScore = directionScore;
                 bestDirection = direction;
             }
         }
