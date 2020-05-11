@@ -11,7 +11,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 
 
- // LastEdited: 11/05/2020 21:55 
+ // LastEdited: 11/05/2020 22:04 
 
 
 
@@ -253,9 +253,9 @@ public static class GameState
         }
 
         //update picked high value pellets
-        foreach(var kvp in Cell.CellWithSuperPellets)
+        var knownSuperPelletCoords = Cell.CellWithSuperPellets.Keys.ToList();
+        foreach(var coord in knownSuperPelletCoords)
         {
-            var coord = kvp.Key;
             if( visiblePelletsByCoord.ContainsKey(coord) ==  false)
             {
                 //pellet got picked
@@ -869,7 +869,9 @@ public class Player
 
             var actions = string.Join('|', GameState.myPacs.Values.Select(pac => pac.GetCommand()));
 
-            Console.WriteLine($"{actions} {watch.ElapsedMilliseconds.ToString()} ms"); // MOVE <pacId> <x> <y>
+            Player.Debug($"{watch.ElapsedMilliseconds.ToString()} ms");
+
+            Console.WriteLine($"{actions}"); // MOVE <pacId> <x> <y>
 
         }
     }

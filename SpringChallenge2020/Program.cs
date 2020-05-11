@@ -116,7 +116,9 @@ public class Player
 
             var actions = string.Join('|', GameState.myPacs.Values.Select(pac => pac.GetCommand()));
 
-            Console.WriteLine($"{actions} {watch.ElapsedMilliseconds.ToString()} ms"); // MOVE <pacId> <x> <y>
+            Player.Debug($"{watch.ElapsedMilliseconds.ToString()} ms");
+
+            Console.WriteLine($"{actions}"); // MOVE <pacId> <x> <y>
 
         }
     }

@@ -113,9 +113,9 @@ public static class GameState
         }
 
         //update picked high value pellets
-        foreach(var kvp in Cell.CellWithSuperPellets)
+        var knownSuperPelletCoords = Cell.CellWithSuperPellets.Keys.ToList();
+        foreach(var coord in knownSuperPelletCoords)
         {
-            var coord = kvp.Key;
             if( visiblePelletsByCoord.ContainsKey(coord) ==  false)
             {
                 //pellet got picked
