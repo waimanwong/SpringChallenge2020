@@ -56,18 +56,26 @@ public class GameAI
 
             foreach(var pac in pacsWithSpeed)
             {
+                var previousChoosenDirection = choosenDirection[pac.pacId];
+                var oppositeDirection = GetOppositeDirection(previousChoosenDirection);
+
                 var zonesOfPac = secondTurnZones
                     .Where(kvp => kvp.Value.pacId == pac.pacId)
                     .ToList();
+
                 if (zonesOfPac.Count == 1)
                 {
-                    pac.Move(zonesOfPac.Single().Value.direction);
+                    if(zonesOfPac.Single().Value.direction != oppositeDirection)
+                    {
+                        pac.Move(zonesOfPac.Single().Value.direction);
+                    }
+                    else
+                    {
+                        // do not move the second round
+                    }
                 }
                 else
                 {
-                    var previousChoosenDirection = choosenDirection[pac.pacId];
-                    var oppositeDirection = GetOppositeDirection(previousChoosenDirection);
-
                     var bestZone = zonesOfPac
                         //Avoid going back to 
                         .Where(kvp => kvp.Value.direction != oppositeDirection)
