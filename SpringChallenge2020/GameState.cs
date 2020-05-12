@@ -21,17 +21,6 @@ public static class GameState
         myPacs = new Dictionary<int, Pac>();
     }
 
-    public static bool FirstTurn => turn == 1;
-
-    public static (int,int) GetRandomCellToVisit(Random random)
-    {
-        var positionsToVisit = Map.Cells.Values.Where(c => c.PelletValue == 1).ToArray();
-
-        var randomIndex = random.Next(positionsToVisit.Length);
-
-        return positionsToVisit[randomIndex].Coord;
-    }
-
     public static void SetState(
         int turn,
         int myScore, int opponentScore, 
@@ -71,12 +60,17 @@ public static class GameState
 
     private static void RemoveMyDeadPacman(Dictionary<int, Pac> myVisiblePacsById)
     {
-        foreach (var kvp in myPacs)
+        foreach(var kvp in myVisiblePacsById)
         {
-            var myPacId = kvp.Key;
-            if (myVisiblePacsById.ContainsKey(myPacId) == false)
+            var pac = kvp.Value;
+            
+            if(pac.IsDead)
             {
-                myPacs.Remove(myPacId);
+                var deadPacId = pac.pacId;
+                if(myPacs.ContainsKey(deadPacId))
+                {
+                    myPacs.Remove(deadPacId);
+                }
             }
         }
     }

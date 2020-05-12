@@ -30,6 +30,8 @@ public class Pac: Position
         this.abilityCooldown = abilityCooldown;
     }
 
+    public bool IsDead => typeId == "DEAD";
+
     public void UpdateState(Pac visiblePac)
     {
         CheckIfBlocked(visiblePac);
@@ -151,81 +153,6 @@ public class Pac: Position
         
         this.x = cell.x;
         this.y = cell.y;
-
-        //if (speedTurnsLeft > 0)
-        //{
-        //    //Can move one cell further
-        //    this.x = cell.x;
-        //    this.y = cell.y;
-
-        //    var possibleNeighbors = Map.Cells[this.Coord].Neighbors.Select(kvp => kvp.Value.Coord).ToHashSet();
-
-        //    // priority to not visited
-        //    foreach (var possibleNeighbor in possibleNeighbors
-        //        .OrderByDescending( coord => Map.Cells[coord].PelletValue))
-        //    {
-        //        if (Map.Cells[possibleNeighbor].PelletValue > 0)
-        //        {
-        //            //Second move here
-        //            this.currentMove = new Move(this.pacId, possibleNeighbor.Item1, possibleNeighbor.Item2);
-        //            return;
-        //        }
-        //    }
-
-
-        //    if (Map.Cells[this.Coord].Neighbors.TryGetValue(direction, out var secondCell))
-        //    {
-        //        //keep going in the same direction
-        //        this.currentMove = new Move(this.pacId, secondCell.x, secondCell.y);
-        //        return;
-        //    }
-
-
-        //    //Otherwise...
-        //    var defaultChoice = possibleNeighbors.First();
-        //    this.currentMove = new Move(this.pacId, defaultChoice.Item1, defaultChoice.Item2);
-        //    return;
-        //}
-    }
-
-    public void Move()
-    {
-        var choosenDirection = this.bestDirection.Value;
-        var cell = Map.Cells[this.Coord].Neighbors[choosenDirection];
-        
-        this.currentMove = new Move(this.pacId, cell.x, cell.y);
-
-        if(speedTurnsLeft > 0)
-        {
-            //Can move one cell further
-            this.x = cell.x;
-            this.y = cell.y;
-
-            if(Map.Cells[this.Coord].Neighbors.TryGetValue(choosenDirection, out var secondCell))
-            {
-                //keep going in the same direction
-                this.currentMove = new Move(this.pacId, secondCell.x, secondCell.y);
-                return;
-            }
-
-            var possibleNeighbors = Map.Cells[this.Coord].Neighbors.Select(kvp => kvp.Value.Coord).ToHashSet();
-                
-            // priority to not visited
-            foreach (var possibleNeighbor in possibleNeighbors)
-            {
-                if(Map.Cells[possibleNeighbor].PelletValue > 0)
-                {
-                    //Second move here
-                    this.currentMove = new Move(this.pacId, possibleNeighbor.Item1, possibleNeighbor.Item2);
-                    return;
-                }
-            }
-
-            //Otherwise...
-            var defaultChoice = possibleNeighbors.First();
-            this.currentMove = new Move(this.pacId, defaultChoice.Item1, defaultChoice.Item2);
-            return;
-        }
 
     }
 
