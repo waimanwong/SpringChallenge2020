@@ -49,8 +49,6 @@ public static class GameState
             {
                 myPacs[pacId].UpdateState(visiblePac);
             }
-
-            myPacs[pacId].ComputeBestDirection(myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
         }
 
         GameState.enemyPacs = enemyVisiblePacsById;

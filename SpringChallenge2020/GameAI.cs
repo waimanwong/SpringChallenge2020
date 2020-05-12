@@ -33,26 +33,19 @@ public class GameAI
                 continue;
             }
             
-            if(pac.HasMove == false)
+            var bestZone = myZones
+                .Where(kvp => kvp.Value.pacId == pacId)
+                .Select(kvp => kvp.Value)
+                .OrderByDescending(zone => zone.Score)
+                .First();
+
+            pac.Move(bestZone.direction);
+
+            if( pac.speedTurnsLeft > 0)
             {
-                //pac.Move();
-
-                var bestZone = myZones
-                    .Where(kvp => kvp.Value.pacId == pacId)
-                    .Select(kvp => kvp.Value)
-                    .OrderByDescending(zone => zone.Score)
-                    .First();
-
-                pac.Move(bestZone.direction);
-
-
-                if( pac.speedTurnsLeft > 0)
-                {
-                    choosenDirection[pacId] = bestZone.direction;
-                    pacsWithSpeed.Add(pac);
-                }
-
-            } 
+                choosenDirection[pacId] = bestZone.direction;
+                pacsWithSpeed.Add(pac);
+            }
         }
 
         if(pacsWithSpeed.Count > 0)

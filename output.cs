@@ -14,7 +14,7 @@ using System.Collections;
 using System.Diagnostics;
 
 
- // LastEdited: 12/05/2020 22:53 
+ // LastEdited: 12/05/2020 22:55 
 
 
 
@@ -135,26 +135,19 @@ public class GameAI
                 continue;
             }
             
-            if(pac.HasMove == false)
+            var bestZone = myZones
+                .Where(kvp => kvp.Value.pacId == pacId)
+                .Select(kvp => kvp.Value)
+                .OrderByDescending(zone => zone.Score)
+                .First();
+
+            pac.Move(bestZone.direction);
+
+            if( pac.speedTurnsLeft > 0)
             {
-                //pac.Move();
-
-                var bestZone = myZones
-                    .Where(kvp => kvp.Value.pacId == pacId)
-                    .Select(kvp => kvp.Value)
-                    .OrderByDescending(zone => zone.Score)
-                    .First();
-
-                pac.Move(bestZone.direction);
-
-
-                if( pac.speedTurnsLeft > 0)
-                {
-                    choosenDirection[pacId] = bestZone.direction;
-                    pacsWithSpeed.Add(pac);
-                }
-
-            } 
+                choosenDirection[pacId] = bestZone.direction;
+                pacsWithSpeed.Add(pac);
+            }
         }
 
         if(pacsWithSpeed.Count > 0)
@@ -374,8 +367,6 @@ public static class GameState
             {
                 myPacs[pacId].UpdateState(visiblePac);
             }
-
-            myPacs[pacId].ComputeBestDirection(myVisiblePacsById, enemyVisiblePacsById, visiblePellets);
         }
 
         GameState.enemyPacs = enemyVisiblePacsById;
@@ -648,7 +639,6 @@ public class Pac: Position
         this.activateSpeed = false;
         this.newType = string.Empty;
 
-        CheckCurrentMoveCompletion();
     }
 
     private void CheckIfBlocked(Pac visiblePac)
@@ -656,96 +646,6 @@ public class Pac: Position
         var lastActionIsMove = (this.activateSpeed == false);
        isBlocked = lastActionIsMove && this.x == visiblePac.x && this.y == visiblePac.y; 
     }
-
-    private void CheckCurrentMoveCompletion()
-    {
-        if (this.currentMove != null  && this.currentMove.IsCompleted(this))
-        {
-            this.currentMove = null;
-        }
-
-        if(this.isBlocked)
-        {
-            //Cancel current move
-            this.currentMove = null;
-        }
-    }
-
-    public void ComputeBestDirection(
-        Dictionary<int, Pac> myVisiblePacsById,
-        Dictionary<int, Pac> enemyVisiblePacsbyId, 
-        Dictionary<(int, int), Pellet> visiblePellets)
-    {
-        this.bestDirection = null;
-        double bestScore = int.MinValue;
-
-        var myVisiblePacs = myVisiblePacsById.Values
-            .ToDictionary(keySelector: pac => pac.Coord, elementSelector: pac => pac);
-
-        var enemyVisiblePacs = enemyVisiblePacsbyId.Values
-            .ToDictionary(keySelector: pac => pac.Coord, elementSelector: pac => pac);
-
-        //Player.Debug($"Compute best direction for pac {this.pacId}");
-
-        //Compute best direction
-        foreach (var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West })
-        {   
-            if(Map.Cells[(this.x, this.y)].Neighbors.ContainsKey(direction) == false)
-            {
-                //can not go in this direction, it is a wall
-                continue;
-            }
-
-            var distance = 0;
-            var currentCell = Map.Cells[(this.x, this.y)];
-            double directionScore = 0;
-            var visitedPosition = new HashSet<(int, int)>();
-
-            visitedPosition.Add(currentCell.Coord);
-            while (currentCell.Neighbors.TryGetValue(direction, out var nextCell))
-            {
-                if (visitedPosition.Contains(nextCell.Coord))
-                    break;
-
-                distance += 1;
-                currentCell = nextCell;
-
-                visitedPosition.Add(currentCell.Coord);
-
-                if (myVisiblePacs.TryGetValue(currentCell.Coord, out var myBlockingPac))
-                {
-                    //There is a pac of mine in this which blocks 
-                    break;
-                }
-
-                if(enemyVisiblePacs.TryGetValue(currentCell.Coord, out var enemyPac))
-                {
-                    //by default it is a threat if too close
-                    if (distance < 4)
-                    {
-                        directionScore -= 100;
-                    }
-                    break;
-                }
-
-                if (visiblePellets.TryGetValue(currentCell.Coord, out var visiblePellet))
-                {
-                    directionScore += (visiblePellet.value * Math.Pow(10, -distance));
-                }
-            }
-
-            //Player.Debug($"\tDirection: {direction}: {directionScore.ToString()}");
-
-            if (directionScore > bestScore)
-            {
-                bestScore = directionScore;
-                bestDirection = direction;
-            }
-        }
-
-    }
-
-    public bool HasMove => currentMove != null;
 
     public void Move(Direction direction)
     {
