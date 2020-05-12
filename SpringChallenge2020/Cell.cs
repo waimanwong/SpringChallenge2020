@@ -1,4 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
 
 public class Cell: Position
 {
@@ -42,6 +45,20 @@ public class Cell: Position
     public override string ToString()
     {
         return $"({x.ToString()},{y.ToString()})";
+    }
+
+    public HashSet<Guid> tempFloodZoneIds = new HashSet<Guid>();
+    public Guid? OwnedByZone;
+
+    public void Color(Guid guid)
+    {
+        tempFloodZoneIds.Add(guid);
+    }
+
+    public void RemoveColor()
+    {
+        OwnedByZone = null;
+        tempFloodZoneIds.Clear();
     }
 }
 

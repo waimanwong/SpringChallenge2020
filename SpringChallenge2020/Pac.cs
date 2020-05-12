@@ -81,7 +81,7 @@ public class Pac: Position
         var enemyVisiblePacs = enemyVisiblePacsbyId.Values
             .ToDictionary(keySelector: pac => pac.Coord, elementSelector: pac => pac);
 
-        Player.Debug($"Compute best direction for pac {this.pacId}");
+        //Player.Debug($"Compute best direction for pac {this.pacId}");
 
         //Compute best direction
         foreach (var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West })
@@ -130,7 +130,7 @@ public class Pac: Position
                 }
             }
 
-            Player.Debug($"\tDirection: {direction}: {directionScore.ToString()}");
+            //Player.Debug($"\tDirection: {direction}: {directionScore.ToString()}");
 
             if (directionScore > bestScore)
             {
@@ -142,6 +142,18 @@ public class Pac: Position
     }
 
     public bool HasMove => currentMove != null;
+
+    public void Move(Direction direction)
+    {
+        var cell = Map.Cells[this.Coord].Neighbors[direction];
+
+        this.currentMove = new Move(this.pacId, cell.x, cell.y);
+
+        this.x = cell.x;
+        this.y = cell.y;
+
+        Map.Cells[this.Coord].PelletValue = 0;
+    }
 
     public void Move()
     {

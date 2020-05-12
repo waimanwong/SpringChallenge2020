@@ -53,7 +53,7 @@ public class Player
             {
                 var pacState = Console.ReadLine();
 
-                Player.Debug(pacState);
+                //Player.Debug(pacState);
 
                 inputs = pacState.Split(' ');
                 int pacId = int.Parse(inputs[0]); // pac number (unique within a team)
@@ -109,7 +109,7 @@ public class Player
 
             GameState.SetState(turn, myScore, opponentScore, myPacs, enemyPacs, pellets);
 
-            GameState.Debug();
+            //GameState.Debug();
 
             var gameAI = new GameAI();
             gameAI.ComputeActions();
