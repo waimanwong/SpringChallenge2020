@@ -53,8 +53,6 @@ public class Player
             {
                 var pacState = Console.ReadLine();
 
-                //Player.Debug(pacState);
-
                 inputs = pacState.Split(' ');
                 int pacId = int.Parse(inputs[0]); // pac number (unique within a team)
                 bool mine = inputs[1] != "0"; // true if this pac is yours
@@ -69,6 +67,8 @@ public class Player
                 if (mine)
                 {
                     myPacs.Add(pac.pacId, pac);
+
+                    Player.Debug(pacState);
                 }
                 else
                 {

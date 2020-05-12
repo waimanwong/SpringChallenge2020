@@ -14,7 +14,7 @@ using System.Collections;
 using System.Diagnostics;
 
 
- // LastEdited: 12/05/2020 20:35 
+ // LastEdited: 12/05/2020 22:25 
 
 
 
@@ -120,7 +120,9 @@ public class GameAI
             GameState.myPacs.Values.ToList(), 
             GameState.enemyPacs.Values.ToList());
 
-        var myPacsWithSpeed = new List<Pac>();
+        var pacsWithSpeed = new List<Pac>();
+
+        var choosenDirection = new Dictionary<int, Direction>();
 
         foreach (var kvp in myPacs)
         {
@@ -145,35 +147,64 @@ public class GameAI
 
                 pac.Move(bestZone.direction);
 
-                if(pac.speedTurnsLeft > 0)
+
+                if( pac.speedTurnsLeft > 0)
                 {
-                    //compute second turn
-                    myPacsWithSpeed.Add(pac);
+                    choosenDirection[pacId] = bestZone.direction;
+                    pacsWithSpeed.Add(pac);
                 }
+
             } 
         }
 
-        if(myPacsWithSpeed.Count > 0)
+        if(pacsWithSpeed.Count > 0)
         {
-            Player.Debug("-----------------------------");
-            
-            var secondTurnZones = RunSimulation(myPacsWithSpeed, GameState.enemyPacs.Values.ToList());
-            foreach(var pac in myPacsWithSpeed)
+            var secondTurnZones = RunSimulation(
+                GameState.myPacs.Values.ToList(),
+                GameState.enemyPacs.Values.ToList());
+
+            foreach(var pac in pacsWithSpeed)
             {
-                var bestZone = secondTurnZones
+                var zonesOfPac = secondTurnZones
                     .Where(kvp => kvp.Value.pacId == pac.pacId)
-                    .Select(kvp => kvp.Value)
-                    .OrderByDescending(zone => zone.Score)
-                    .First();
-                Player.Debug($"Player {pac.pacId} ({pac.x}, {pac.y}) moves to {bestZone.direction}");
-                pac.Move(bestZone.direction);
+                    .ToList();
+                if (zonesOfPac.Count == 1)
+                {
+                    pac.Move(zonesOfPac.Single().Value.direction);
+                }
+                else
+                {
+                    var previousChoosenDirection = choosenDirection[pac.pacId];
+                    var oppositeDirection = GetOppositeDirection(previousChoosenDirection);
+
+                    var bestZone = zonesOfPac
+                        //Avoid going back to 
+                        .Where(kvp => kvp.Value.direction != oppositeDirection)
+                        .Select(kvp => kvp.Value)
+                        .OrderByDescending(zone => zone.Score)
+                        .First();
+
+                    pac.Move(bestZone.direction);
+                }
             }
-
         }
-
-
     }
 
+    private static Direction GetOppositeDirection(Direction direction)
+    {
+        switch (direction)
+        {
+            case Direction.East:
+                return Direction.West;
+            case Direction.West:
+                return Direction.East;
+            case Direction.North:
+                return Direction.South;
+            case Direction.South:
+                return Direction.North;
+        }
+        throw new NotSupportedException();
+    }
 
     public Dictionary<Guid,Zone> RunSimulation(List<Pac> myPacs, List<Pac> enemyPacs)
     {
@@ -189,7 +220,7 @@ public class GameAI
         var turn = 1;
         var newFrontier = new List<(int, int)>();
 
-        while (turn <= 10)
+        while (turn <= 30)
         {
             newFrontier.Clear();
 
@@ -304,21 +335,19 @@ public class Zone
     public static Guid NeutralZoneId = new Guid("{B7BAD255-8A34-4870-BA36-BF813F896BA6}");
 
     public Guid Id { get; }
-    
+
     public int pacId { get; }
 
     public Direction direction { get; }
 
-    private List<(int,int)> Frontier = new List<(int,int)>();
-
-    public double Score = 0;
+    private List<(int, int)> Frontier = new List<(int, int)>();
 
     /// <summary>
     /// Coords in the zone
     /// </summary>
     private HashSet<(int, int)> Coords = new HashSet<(int, int)>();
 
-    public Zone(Pac pac, Direction direction, (int,int) start)
+    public Zone(Pac pac, Direction direction, (int, int) start)
     {
         this.Id = Guid.NewGuid();
         this.pacId = pac.pacId;
@@ -327,19 +356,21 @@ public class Zone
         Map.Cells[pac.Coord].OwnedByZone = NeutralZoneId;
         Map.Cells[start].OwnedByZone = this.Id;
 
+        AddCoord(start, 0);
+
         Frontier.Add(start);
     }
 
-    public List<(int,int)> Expand()
+    public List<(int, int)> Expand()
     {
         var newFrontier = new List<(int, int)>();
 
-        foreach(var currentPos in Frontier)
+        foreach (var currentPos in Frontier)
         {
-            foreach(var neighbor in Map.Cells[currentPos].Neighbors)
+            foreach (var neighbor in Map.Cells[currentPos].Neighbors)
             {
                 var neighborCell = neighbor.Value;
-                if(neighborCell.OwnedByZone.HasValue == false)
+                if (neighborCell.OwnedByZone.HasValue == false)
                 {
                     neighborCell.Color(this.Id);
                     newFrontier.Add(neighborCell.Coord);
@@ -351,13 +382,39 @@ public class Zone
 
         return newFrontier;
     }
-         
-    public void AddCoord((int,int) coord, int turn)
+
+    private Dictionary<int, List<(int, int)>> frontiers = new Dictionary<int, List<(int, int)>>();
+
+    public void AddCoord((int, int) coord, int turn)
     {
         Coords.Add(coord);
 
-        Score += Map.Cells[coord].PelletValue;
+        if (frontiers.ContainsKey(turn) == false)
+            frontiers[turn] = new List<(int, int)>();
+
+        frontiers[turn].Add(coord);
     }
+
+    public double Score 
+    { 
+        get 
+        {
+            double score = 0;
+            foreach(var kvp in frontiers)
+            {
+                var maxScoreAtFrontier = kvp.Value
+                    .Select(coord => Map.Cells[coord].PelletValue)
+                    .OrderByDescending(v => v)
+                    .First();
+                var turn = kvp.Key;
+
+                score += maxScoreAtFrontier * Math.Pow(10, -turn);
+            }
+
+            return score;
+        } 
+    }
+        
 
     public void Debug()
     {
@@ -816,11 +873,44 @@ public class Pac: Position
         var cell = Map.Cells[this.Coord].Neighbors[direction];
 
         this.currentMove = new Move(this.pacId, cell.x, cell.y);
-
+        
         this.x = cell.x;
         this.y = cell.y;
 
-        Map.Cells[this.Coord].PelletValue = 0;
+        //if (speedTurnsLeft > 0)
+        //{
+        //    //Can move one cell further
+        //    this.x = cell.x;
+        //    this.y = cell.y;
+
+        //    var possibleNeighbors = Map.Cells[this.Coord].Neighbors.Select(kvp => kvp.Value.Coord).ToHashSet();
+
+        //    // priority to not visited
+        //    foreach (var possibleNeighbor in possibleNeighbors
+        //        .OrderByDescending( coord => Map.Cells[coord].PelletValue))
+        //    {
+        //        if (Map.Cells[possibleNeighbor].PelletValue > 0)
+        //        {
+        //            //Second move here
+        //            this.currentMove = new Move(this.pacId, possibleNeighbor.Item1, possibleNeighbor.Item2);
+        //            return;
+        //        }
+        //    }
+
+
+        //    if (Map.Cells[this.Coord].Neighbors.TryGetValue(direction, out var secondCell))
+        //    {
+        //        //keep going in the same direction
+        //        this.currentMove = new Move(this.pacId, secondCell.x, secondCell.y);
+        //        return;
+        //    }
+
+
+        //    //Otherwise...
+        //    var defaultChoice = possibleNeighbors.First();
+        //    this.currentMove = new Move(this.pacId, defaultChoice.Item1, defaultChoice.Item2);
+        //    return;
+        //}
     }
 
     public void Move()
@@ -1003,8 +1093,6 @@ public class Player
             {
                 var pacState = Console.ReadLine();
 
-                //Player.Debug(pacState);
-
                 inputs = pacState.Split(' ');
                 int pacId = int.Parse(inputs[0]); // pac number (unique within a team)
                 bool mine = inputs[1] != "0"; // true if this pac is yours
@@ -1019,6 +1107,8 @@ public class Player
                 if (mine)
                 {
                     myPacs.Add(pac.pacId, pac);
+
+                    Player.Debug(pacState);
                 }
                 else
                 {

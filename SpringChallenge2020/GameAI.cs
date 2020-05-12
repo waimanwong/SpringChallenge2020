@@ -18,7 +18,9 @@ public class GameAI
             GameState.myPacs.Values.ToList(), 
             GameState.enemyPacs.Values.ToList());
 
-        var myPacsWithSpeed = new List<Pac>();
+        var pacsWithSpeed = new List<Pac>();
+
+        var choosenDirection = new Dictionary<int, Direction>();
 
         foreach (var kvp in myPacs)
         {
@@ -43,35 +45,64 @@ public class GameAI
 
                 pac.Move(bestZone.direction);
 
-                if(pac.speedTurnsLeft > 0)
+
+                if( pac.speedTurnsLeft > 0)
                 {
-                    //compute second turn
-                    myPacsWithSpeed.Add(pac);
+                    choosenDirection[pacId] = bestZone.direction;
+                    pacsWithSpeed.Add(pac);
                 }
+
             } 
         }
 
-        if(myPacsWithSpeed.Count > 0)
+        if(pacsWithSpeed.Count > 0)
         {
-            Player.Debug("-----------------------------");
-            
-            var secondTurnZones = RunSimulation(myPacsWithSpeed, GameState.enemyPacs.Values.ToList());
-            foreach(var pac in myPacsWithSpeed)
+            var secondTurnZones = RunSimulation(
+                GameState.myPacs.Values.ToList(),
+                GameState.enemyPacs.Values.ToList());
+
+            foreach(var pac in pacsWithSpeed)
             {
-                var bestZone = secondTurnZones
+                var zonesOfPac = secondTurnZones
                     .Where(kvp => kvp.Value.pacId == pac.pacId)
-                    .Select(kvp => kvp.Value)
-                    .OrderByDescending(zone => zone.Score)
-                    .First();
-                Player.Debug($"Player {pac.pacId} ({pac.x}, {pac.y}) moves to {bestZone.direction}");
-                pac.Move(bestZone.direction);
+                    .ToList();
+                if (zonesOfPac.Count == 1)
+                {
+                    pac.Move(zonesOfPac.Single().Value.direction);
+                }
+                else
+                {
+                    var previousChoosenDirection = choosenDirection[pac.pacId];
+                    var oppositeDirection = GetOppositeDirection(previousChoosenDirection);
+
+                    var bestZone = zonesOfPac
+                        //Avoid going back to 
+                        .Where(kvp => kvp.Value.direction != oppositeDirection)
+                        .Select(kvp => kvp.Value)
+                        .OrderByDescending(zone => zone.Score)
+                        .First();
+
+                    pac.Move(bestZone.direction);
+                }
             }
-
         }
-
-
     }
 
+    private static Direction GetOppositeDirection(Direction direction)
+    {
+        switch (direction)
+        {
+            case Direction.East:
+                return Direction.West;
+            case Direction.West:
+                return Direction.East;
+            case Direction.North:
+                return Direction.South;
+            case Direction.South:
+                return Direction.North;
+        }
+        throw new NotSupportedException();
+    }
 
     public Dictionary<Guid,Zone> RunSimulation(List<Pac> myPacs, List<Pac> enemyPacs)
     {
@@ -87,7 +118,7 @@ public class GameAI
         var turn = 1;
         var newFrontier = new List<(int, int)>();
 
-        while (turn <= 10)
+        while (turn <= 30)
         {
             newFrontier.Clear();
 
@@ -202,21 +233,19 @@ public class Zone
     public static Guid NeutralZoneId = new Guid("{B7BAD255-8A34-4870-BA36-BF813F896BA6}");
 
     public Guid Id { get; }
-    
+
     public int pacId { get; }
 
     public Direction direction { get; }
 
-    private List<(int,int)> Frontier = new List<(int,int)>();
-
-    public double Score = 0;
+    private List<(int, int)> Frontier = new List<(int, int)>();
 
     /// <summary>
     /// Coords in the zone
     /// </summary>
     private HashSet<(int, int)> Coords = new HashSet<(int, int)>();
 
-    public Zone(Pac pac, Direction direction, (int,int) start)
+    public Zone(Pac pac, Direction direction, (int, int) start)
     {
         this.Id = Guid.NewGuid();
         this.pacId = pac.pacId;
@@ -225,19 +254,21 @@ public class Zone
         Map.Cells[pac.Coord].OwnedByZone = NeutralZoneId;
         Map.Cells[start].OwnedByZone = this.Id;
 
+        AddCoord(start, 0);
+
         Frontier.Add(start);
     }
 
-    public List<(int,int)> Expand()
+    public List<(int, int)> Expand()
     {
         var newFrontier = new List<(int, int)>();
 
-        foreach(var currentPos in Frontier)
+        foreach (var currentPos in Frontier)
         {
-            foreach(var neighbor in Map.Cells[currentPos].Neighbors)
+            foreach (var neighbor in Map.Cells[currentPos].Neighbors)
             {
                 var neighborCell = neighbor.Value;
-                if(neighborCell.OwnedByZone.HasValue == false)
+                if (neighborCell.OwnedByZone.HasValue == false)
                 {
                     neighborCell.Color(this.Id);
                     newFrontier.Add(neighborCell.Coord);
@@ -249,13 +280,39 @@ public class Zone
 
         return newFrontier;
     }
-         
-    public void AddCoord((int,int) coord, int turn)
+
+    private Dictionary<int, List<(int, int)>> frontiers = new Dictionary<int, List<(int, int)>>();
+
+    public void AddCoord((int, int) coord, int turn)
     {
         Coords.Add(coord);
 
-        Score += Map.Cells[coord].PelletValue;
+        if (frontiers.ContainsKey(turn) == false)
+            frontiers[turn] = new List<(int, int)>();
+
+        frontiers[turn].Add(coord);
     }
+
+    public double Score 
+    { 
+        get 
+        {
+            double score = 0;
+            foreach(var kvp in frontiers)
+            {
+                var maxScoreAtFrontier = kvp.Value
+                    .Select(coord => Map.Cells[coord].PelletValue)
+                    .OrderByDescending(v => v)
+                    .First();
+                var turn = kvp.Key;
+
+                score += maxScoreAtFrontier * Math.Pow(10, -turn);
+            }
+
+            return score;
+        } 
+    }
+        
 
     public void Debug()
     {
