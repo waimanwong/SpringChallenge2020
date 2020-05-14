@@ -14,7 +14,7 @@ using System.Collections;
 using System.Diagnostics;
 
 
- // LastEdited: 12/05/2020 23:00 
+ // LastEdited: 14/05/2020 23:33 
 
 
 
@@ -377,7 +377,9 @@ public static class GameState
             }
         }
 
-        GameState.enemyPacs = enemyVisiblePacsById;
+        GameState.enemyPacs = enemyVisiblePacsById
+            .Where(kvp => kvp.Value.IsDead == false)
+            .ToDictionary(keySelector: kvp => kvp.Key, elementSelector: kvp => kvp.Value);
         GameState.visiblePellets = visiblePellets;
 
     }
@@ -762,7 +764,7 @@ public class Player
 {
     public static void Debug(string message)
     {
-        Console.Error.WriteLine(message);
+        //Console.Error.WriteLine(message);
     }
 
     static void Main(string[] args)
@@ -861,7 +863,7 @@ public class Player
 
             GameState.SetState(turn, myScore, opponentScore, myPacs, enemyPacs, pellets);
 
-            //GameState.Debug();
+            GameState.Debug();
 
             var gameAI = new GameAI();
             gameAI.ComputeActions();

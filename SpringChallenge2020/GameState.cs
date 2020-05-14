@@ -51,7 +51,9 @@ public static class GameState
             }
         }
 
-        GameState.enemyPacs = enemyVisiblePacsById;
+        GameState.enemyPacs = enemyVisiblePacsById
+            .Where(kvp => kvp.Value.IsDead == false)
+            .ToDictionary(keySelector: kvp => kvp.Key, elementSelector: kvp => kvp.Value);
         GameState.visiblePellets = visiblePellets;
 
     }

@@ -10,7 +10,7 @@ public class Player
 {
     public static void Debug(string message)
     {
-        Console.Error.WriteLine(message);
+        //Console.Error.WriteLine(message);
     }
 
     static void Main(string[] args)
@@ -109,7 +109,7 @@ public class Player
 
             GameState.SetState(turn, myScore, opponentScore, myPacs, enemyPacs, pellets);
 
-            //GameState.Debug();
+            GameState.Debug();
 
             var gameAI = new GameAI();
             gameAI.ComputeActions();
