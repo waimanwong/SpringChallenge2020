@@ -14,7 +14,7 @@ using System.Collections;
 using System.Diagnostics;
 
 
- // LastEdited: 14/05/2020 23:33 
+ // LastEdited: 15/05/2020 0:12 
 
 
 
@@ -764,7 +764,7 @@ public class Player
 {
     public static void Debug(string message)
     {
-        //Console.Error.WriteLine(message);
+        Console.Error.WriteLine(message);
     }
 
     static void Main(string[] args)
