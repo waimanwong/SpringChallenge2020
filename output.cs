@@ -14,7 +14,7 @@ using System.Collections;
 using System.Diagnostics;
 
 
- // LastEdited: 15/05/2020 0:12 
+ // LastEdited: 15/05/2020 23:46 
 
 
 
@@ -124,7 +124,17 @@ public class GameAI
 
         var choosenDirection = new Dictionary<int, Direction>();
 
-        foreach (var kvp in myPacs)
+        //Those can have one move
+        var pacsWithOneMove = myPacs.Where(kvp => Map.Cells[kvp.Value.Coord].Neighbors.Count == 1).ToList();
+        var pacIdsToExclude = pacsWithOneMove.Select(kvp => kvp.Key).ToHashSet();
+        foreach(var kvp in pacsWithOneMove)
+        {
+            var pacWithOneMove = kvp.Value;
+            pacWithOneMove.Move(Map.Cells[pacWithOneMove.Coord].Neighbors.Single().Key);
+        }
+
+
+        foreach (var kvp in myPacs.Where(kvp => pacIdsToExclude.Contains( kvp.Key)==false))
         {
             var pacId = kvp.Key;
             var pac = kvp.Value;
@@ -375,6 +385,8 @@ public static class GameState
             {
                 myPacs[pacId].UpdateState(visiblePac);
             }
+
+            myPacs[pacId].UpdateVisibleEnemyPacs(enemyVisiblePacsById);
         }
 
         GameState.enemyPacs = enemyVisiblePacsById
@@ -657,6 +669,14 @@ public class Pac: Position
        isBlocked = lastActionIsMove && this.x == visiblePac.x && this.y == visiblePac.y; 
     }
 
+    public void UpdateVisibleEnemyPacs(Dictionary<int, Pac> enemyVisiblePacsById)
+    {
+        foreach(var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West})
+        {
+
+        }
+    }
+
     public void Move(Direction direction)
     {
         var cell = Map.Cells[this.Coord].Neighbors[direction];
@@ -764,7 +784,7 @@ public class Player
 {
     public static void Debug(string message)
     {
-        Console.Error.WriteLine(message);
+        //Console.Error.WriteLine(message);
     }
 
     static void Main(string[] args)

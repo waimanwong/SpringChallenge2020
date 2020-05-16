@@ -49,6 +49,8 @@ public static class GameState
             {
                 myPacs[pacId].UpdateState(visiblePac);
             }
+
+            myPacs[pacId].UpdateVisibleEnemyPacs(enemyVisiblePacsById);
         }
 
         GameState.enemyPacs = enemyVisiblePacsById

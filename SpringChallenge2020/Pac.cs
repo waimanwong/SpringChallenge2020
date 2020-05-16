@@ -54,6 +54,14 @@ public class Pac: Position
        isBlocked = lastActionIsMove && this.x == visiblePac.x && this.y == visiblePac.y; 
     }
 
+    public void UpdateVisibleEnemyPacs(Dictionary<int, Pac> enemyVisiblePacsById)
+    {
+        foreach(var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West})
+        {
+
+        }
+    }
+
     public void Move(Direction direction)
     {
         var cell = Map.Cells[this.Coord].Neighbors[direction];

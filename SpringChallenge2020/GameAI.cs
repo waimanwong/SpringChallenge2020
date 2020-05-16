@@ -22,7 +22,17 @@ public class GameAI
 
         var choosenDirection = new Dictionary<int, Direction>();
 
-        foreach (var kvp in myPacs)
+        //Those can have one move
+        var pacsWithOneMove = myPacs.Where(kvp => Map.Cells[kvp.Value.Coord].Neighbors.Count == 1).ToList();
+        var pacIdsToExclude = pacsWithOneMove.Select(kvp => kvp.Key).ToHashSet();
+        foreach(var kvp in pacsWithOneMove)
+        {
+            var pacWithOneMove = kvp.Value;
+            pacWithOneMove.Move(Map.Cells[pacWithOneMove.Coord].Neighbors.Single().Key);
+        }
+
+
+        foreach (var kvp in myPacs.Where(kvp => pacIdsToExclude.Contains( kvp.Key)==false))
         {
             var pacId = kvp.Key;
             var pac = kvp.Value;
