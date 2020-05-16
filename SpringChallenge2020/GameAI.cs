@@ -60,6 +60,9 @@ public class GameAI
 
         if(pacsWithSpeed.Count > 0)
         {
+            Player.Debug("*************************************");
+            Player.Debug("Second turn");
+
             var secondTurnZones = RunSimulation(
                 GameState.myPacs.Values.ToList(),
                 GameState.enemyPacs.Values.ToList());
@@ -67,7 +70,7 @@ public class GameAI
             foreach(var pac in pacsWithSpeed)
             {
                 var previousChoosenDirection = choosenDirection[pac.pacId];
-                var oppositeDirection = GetOppositeDirection(previousChoosenDirection);
+                var oppositeDirection = Map.GetOppositeDirection(previousChoosenDirection);
 
                 var zonesOfPac = secondTurnZones
                     .Where(kvp => kvp.Value.pacId == pac.pacId)
@@ -97,22 +100,6 @@ public class GameAI
                 }
             }
         }
-    }
-
-    private static Direction GetOppositeDirection(Direction direction)
-    {
-        switch (direction)
-        {
-            case Direction.East:
-                return Direction.West;
-            case Direction.West:
-                return Direction.East;
-            case Direction.North:
-                return Direction.South;
-            case Direction.South:
-                return Direction.North;
-        }
-        throw new NotSupportedException();
     }
 
     public Dictionary<Guid,Zone> RunSimulation(List<Pac> myPacs, List<Pac> enemyPacs)

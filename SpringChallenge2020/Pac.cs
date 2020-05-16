@@ -54,11 +54,25 @@ public class Pac: Position
        isBlocked = lastActionIsMove && this.x == visiblePac.x && this.y == visiblePac.y; 
     }
 
+    public List<Pac> VisiblePacs;
+
     public void UpdateVisibleEnemyPacs(Dictionary<int, Pac> enemyVisiblePacsById)
     {
+        VisiblePacs = new List<Pac>();
+        var currentCoord = this.Coord;
+        var visibleEnemies = enemyVisiblePacsById.Values.ToList();
+
         foreach(var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West})
         {
-
+            while(Map.Cells[currentCoord].Neighbors.TryGetValue(direction, out var newCell))
+            {
+                currentCoord = newCell.Coord;
+                var visibleEnemy = visibleEnemies.SingleOrDefault(p => p.Coord == currentCoord);
+                if (visibleEnemy != null)
+                {
+                    VisiblePacs.Add(visibleEnemy);
+                }
+            }
         }
     }
 

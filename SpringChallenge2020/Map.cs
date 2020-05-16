@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 public static class Map
 {
@@ -16,7 +17,41 @@ public static class Map
         Cells = new Dictionary<(int, int), Cell>();
         
         ExtractCells(rows);
-        ComputeNeighborCells();
+        var deadEndCells = ComputeNeighborCells();
+        SetCoefficient(deadEndCells);
+    }
+
+    private static void SetCoefficient(List<Cell> deadEndCells)
+    {
+        foreach(var deadEnd in deadEndCells)
+        {
+            var path = new Stack<Cell>();
+            path.Push(deadEnd);
+
+            var (currentDirection, currentCell) = deadEnd.Neighbors.Single();
+            
+
+            while(currentCell.Neighbors.Count <= 2)
+            {
+                path.Push(currentCell);
+
+                (currentDirection, currentCell) = currentCell
+                    .Neighbors
+                    .Where(kvp => kvp.Key != GetOppositeDirection(currentDirection))
+                    .Single();
+
+            }
+
+            //Player.Debug(string.Join("->", path.Select(c => c.ToString())));
+
+            while(path.Count > 0)
+            {
+                var cell = path.Pop();
+                cell.Coeff = 0.5;
+            }
+
+        }
+                
     }
 
     public static List<Cell> GetNeighbors(Position position)
@@ -41,8 +76,11 @@ public static class Map
         }
     }
 
-    private static void ComputeNeighborCells()
+    //Returns cells with one direction (dead end)
+    private static List<Cell> ComputeNeighborCells()
     {
+        var deadEndCells = new List<Cell>();
+
         foreach(var cell in Cells.Values)
         {
             var cellX = cell.x;
@@ -75,7 +113,30 @@ public static class Map
             {
                 cell.Neighbors.Add(Direction.South, southCell);
             }
+
+            if(cell.Neighbors.Count == 1)
+            {
+                deadEndCells.Add(cell);
+            }
         }
+
+        return deadEndCells;
+    }
+
+    public static Direction GetOppositeDirection(Direction direction)
+    {
+        switch (direction)
+        {
+            case Direction.East:
+                return Direction.West;
+            case Direction.West:
+                return Direction.East;
+            case Direction.North:
+                return Direction.South;
+            case Direction.South:
+                return Direction.North;
+        }
+        throw new NotSupportedException();
     }
 
 }

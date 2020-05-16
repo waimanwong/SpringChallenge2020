@@ -11,6 +11,8 @@ public class Cell: Position
 
     private int pelletValue;
 
+    public double Coeff { get; set; } = 1;
+
     public int PelletValue 
     { 
         get

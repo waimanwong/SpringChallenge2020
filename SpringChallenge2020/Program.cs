@@ -10,7 +10,7 @@ public class Player
 {
     public static void Debug(string message)
     {
-        //Console.Error.WriteLine(message);
+        Console.Error.WriteLine(message);
     }
 
     static void Main(string[] args)

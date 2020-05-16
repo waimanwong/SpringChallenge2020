@@ -10,11 +10,12 @@ using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.ComponentModel.Design;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Collections;
 using System.Diagnostics;
 
 
- // LastEdited: 15/05/2020 23:46 
+ // LastEdited: 16/05/2020 22:57 
 
 
 
@@ -49,6 +50,8 @@ public class Cell: Position
     public static Dictionary<(int, int), Cell> CellWithSuperPellets = new Dictionary<(int, int), Cell>();
 
     private int pelletValue;
+
+    public double Coeff { get; set; } = 1;
 
     public int PelletValue 
     { 
@@ -162,6 +165,9 @@ public class GameAI
 
         if(pacsWithSpeed.Count > 0)
         {
+            Player.Debug("*************************************");
+            Player.Debug("Second turn");
+
             var secondTurnZones = RunSimulation(
                 GameState.myPacs.Values.ToList(),
                 GameState.enemyPacs.Values.ToList());
@@ -169,7 +175,7 @@ public class GameAI
             foreach(var pac in pacsWithSpeed)
             {
                 var previousChoosenDirection = choosenDirection[pac.pacId];
-                var oppositeDirection = GetOppositeDirection(previousChoosenDirection);
+                var oppositeDirection = Map.GetOppositeDirection(previousChoosenDirection);
 
                 var zonesOfPac = secondTurnZones
                     .Where(kvp => kvp.Value.pacId == pac.pacId)
@@ -199,22 +205,6 @@ public class GameAI
                 }
             }
         }
-    }
-
-    private static Direction GetOppositeDirection(Direction direction)
-    {
-        switch (direction)
-        {
-            case Direction.East:
-                return Direction.West;
-            case Direction.West:
-                return Direction.East;
-            case Direction.North:
-                return Direction.South;
-            case Direction.South:
-                return Direction.North;
-        }
-        throw new NotSupportedException();
     }
 
     public Dictionary<Guid,Zone> RunSimulation(List<Pac> myPacs, List<Pac> enemyPacs)
@@ -553,7 +543,41 @@ public static class Map
         Cells = new Dictionary<(int, int), Cell>();
         
         ExtractCells(rows);
-        ComputeNeighborCells();
+        var deadEndCells = ComputeNeighborCells();
+        SetCoefficient(deadEndCells);
+    }
+
+    private static void SetCoefficient(List<Cell> deadEndCells)
+    {
+        foreach(var deadEnd in deadEndCells)
+        {
+            var path = new Stack<Cell>();
+            path.Push(deadEnd);
+
+            var (currentDirection, currentCell) = deadEnd.Neighbors.Single();
+            
+
+            while(currentCell.Neighbors.Count <= 2)
+            {
+                path.Push(currentCell);
+
+                (currentDirection, currentCell) = currentCell
+                    .Neighbors
+                    .Where(kvp => kvp.Key != GetOppositeDirection(currentDirection))
+                    .Single();
+
+            }
+
+            //Player.Debug(string.Join("->", path.Select(c => c.ToString())));
+
+            while(path.Count > 0)
+            {
+                var cell = path.Pop();
+                cell.Coeff = 0.5;
+            }
+
+        }
+                
     }
 
     public static List<Cell> GetNeighbors(Position position)
@@ -578,8 +602,11 @@ public static class Map
         }
     }
 
-    private static void ComputeNeighborCells()
+    //Returns cells with one direction (dead end)
+    private static List<Cell> ComputeNeighborCells()
     {
+        var deadEndCells = new List<Cell>();
+
         foreach(var cell in Cells.Values)
         {
             var cellX = cell.x;
@@ -612,7 +639,30 @@ public static class Map
             {
                 cell.Neighbors.Add(Direction.South, southCell);
             }
+
+            if(cell.Neighbors.Count == 1)
+            {
+                deadEndCells.Add(cell);
+            }
         }
+
+        return deadEndCells;
+    }
+
+    public static Direction GetOppositeDirection(Direction direction)
+    {
+        switch (direction)
+        {
+            case Direction.East:
+                return Direction.West;
+            case Direction.West:
+                return Direction.East;
+            case Direction.North:
+                return Direction.South;
+            case Direction.South:
+                return Direction.North;
+        }
+        throw new NotSupportedException();
     }
 
 }
@@ -669,11 +719,25 @@ public class Pac: Position
        isBlocked = lastActionIsMove && this.x == visiblePac.x && this.y == visiblePac.y; 
     }
 
+    public List<Pac> VisiblePacs;
+
     public void UpdateVisibleEnemyPacs(Dictionary<int, Pac> enemyVisiblePacsById)
     {
+        VisiblePacs = new List<Pac>();
+        var currentCoord = this.Coord;
+        var visibleEnemies = enemyVisiblePacsById.Values.ToList();
+
         foreach(var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West})
         {
-
+            while(Map.Cells[currentCoord].Neighbors.TryGetValue(direction, out var newCell))
+            {
+                currentCoord = newCell.Coord;
+                var visibleEnemy = visibleEnemies.SingleOrDefault(p => p.Coord == currentCoord);
+                if (visibleEnemy != null)
+                {
+                    VisiblePacs.Add(visibleEnemy);
+                }
+            }
         }
     }
 
@@ -784,7 +848,7 @@ public class Player
 {
     public static void Debug(string message)
     {
-        //Console.Error.WriteLine(message);
+        Console.Error.WriteLine(message);
     }
 
     static void Main(string[] args)
