@@ -85,6 +85,7 @@ public class Pac: Position
         this.x = cell.x;
         this.y = cell.y;
 
+        Map.Cells[this.Coord].PelletValue = 0;
     }
 
     public void SwitchToType(string newType)
