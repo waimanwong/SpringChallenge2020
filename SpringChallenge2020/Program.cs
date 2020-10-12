@@ -53,6 +53,8 @@ public class Player
             {
                 var pacState = Console.ReadLine();
 
+                Player.Debug(pacState);
+
                 inputs = pacState.Split(' ');
                 int pacId = int.Parse(inputs[0]); // pac number (unique within a team)
                 bool mine = inputs[1] != "0"; // true if this pac is yours
@@ -63,16 +65,17 @@ public class Player
                 int abilityCooldown = int.Parse(inputs[6]); // unused in wood leagues
 
                 var pac = new Pac(pacId, mine, x, y, typeId, speedTurnsLeft, abilityCooldown);
-                
-                if (mine)
-                {
-                    myPacs.Add(pac.pacId, pac);
 
-                    Player.Debug(pacState);
-                }
-                else
+                if (pac.IsDead == false)
                 {
-                    enemyPacs.Add(pac.pacId, pac);
+                    if (mine)
+                    {
+                        myPacs.Add(pac.pacId, pac);
+                    }
+                    else
+                    {
+                        enemyPacs.Add(pac.pacId, pac);
+                    }
                 }
             }
 

@@ -37,10 +37,39 @@ public class GameAI
             var pacId = kvp.Key;
             var pac = kvp.Value;
 
-            if (pac.abilityCooldown == 0)
+            if (pac.VisiblePacs.Count > 0)
             {
-                pac.ActivateSpeed();
-                continue;
+                var (closestEnemy, distance) = pac.VisiblePacs.OrderBy(kvp => kvp.Item2).First();
+                if(distance == 1)
+                {
+                    var typeComparison = TypeAnalyzer.Compare(pac.typeId, closestEnemy.typeId);
+                    var enemyIsStronger = typeComparison < 0;
+                    var enemyIsWeaker = typeComparison > 0;
+                    var sameType = typeComparison == 0;
+
+                    if (enemyIsStronger)
+                    {
+                        if (pac.abilityCooldown == 0)
+                        {
+                            //enemy can not switch
+                            var strongerType = TypeAnalyzer.GetStrongerType(closestEnemy.typeId);
+                            pac.SwitchToType(strongerType);
+                            continue;
+                        }
+                        else
+                        {
+                            //Flee
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (pac.abilityCooldown == 0)
+                {
+                    pac.ActivateSpeed();
+                    continue;
+                }
             }
             
             var bestZone = myZones
@@ -168,38 +197,6 @@ public class GameAI
         {
             kvp.Value.Debug();
         }
-
-        //var row = new StringBuilder();
-
-        //for (int y = 0; y < Map.Height; y++)
-        //{
-        //    row.Clear();
-        //    for (int x = 0; x < Map.Width; x++)
-        //    {
-        //        var coord = (x, y);
-        //        if (Map.Cells.TryGetValue(coord, out var cell))
-        //        {
-        //            if (cell.OwnedByZone.HasValue)
-        //            {
-        //                if (zones.TryGetValue(cell.OwnedByZone.Value, out var zone))
-        //                {
-        //                    row.Append($"{zone.pacId}");
-        //                }
-        //                else
-        //                {
-        //                    row.Append('.');
-        //                }
-        //            }
-        //            else
-        //            {
-        //                row.Append(' ');
-        //            }
-        //        }
-        //        else
-        //            row.Append('#');
-        //    }
-        //    Player.Debug(row.ToString());
-        //}
     }
 
     private Dictionary<Guid, Zone> InitializeZones(List<Pac> myPacs)

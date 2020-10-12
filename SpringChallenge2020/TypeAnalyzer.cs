@@ -9,6 +9,20 @@ public static class TypeAnalyzer
     public const string PAPER = "PAPER";
     public const string SCISSORS = "SCISSORS";
 
+    public static string GetStrongerType(string type)
+    {
+        switch(type)
+        {
+            case ROCK:
+                return PAPER;
+            case PAPER:
+                return SCISSORS;
+            case SCISSORS:
+                return ROCK;
+        }
+        throw new NotSupportedException();
+    }
+
     /// <summary>
     /// return signednumber: myType - enemyType
     /// </summary>

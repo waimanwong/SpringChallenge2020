@@ -15,7 +15,7 @@ using System.Collections;
 using System.Diagnostics;
 
 
- // LastEdited: 16/05/2020 22:58 
+ // LastEdited: 17/05/2020 23:59 
 
 
 
@@ -142,10 +142,39 @@ public class GameAI
             var pacId = kvp.Key;
             var pac = kvp.Value;
 
-            if (pac.abilityCooldown == 0)
+            if (pac.VisiblePacs.Count > 0)
             {
-                pac.ActivateSpeed();
-                continue;
+                var (closestEnemy, distance) = pac.VisiblePacs.OrderBy(kvp => kvp.Item2).First();
+                if(distance == 1)
+                {
+                    var typeComparison = TypeAnalyzer.Compare(pac.typeId, closestEnemy.typeId);
+                    var enemyIsStronger = typeComparison < 0;
+                    var enemyIsWeaker = typeComparison > 0;
+                    var sameType = typeComparison == 0;
+
+                    if (enemyIsStronger)
+                    {
+                        if (pac.abilityCooldown == 0)
+                        {
+                            //enemy can not switch
+                            var strongerType = TypeAnalyzer.GetStrongerType(closestEnemy.typeId);
+                            pac.SwitchToType(strongerType);
+                            continue;
+                        }
+                        else
+                        {
+                            //Flee
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (pac.abilityCooldown == 0)
+                {
+                    pac.ActivateSpeed();
+                    continue;
+                }
             }
             
             var bestZone = myZones
@@ -273,38 +302,6 @@ public class GameAI
         {
             kvp.Value.Debug();
         }
-
-        //var row = new StringBuilder();
-
-        //for (int y = 0; y < Map.Height; y++)
-        //{
-        //    row.Clear();
-        //    for (int x = 0; x < Map.Width; x++)
-        //    {
-        //        var coord = (x, y);
-        //        if (Map.Cells.TryGetValue(coord, out var cell))
-        //        {
-        //            if (cell.OwnedByZone.HasValue)
-        //            {
-        //                if (zones.TryGetValue(cell.OwnedByZone.Value, out var zone))
-        //                {
-        //                    row.Append($"{zone.pacId}");
-        //                }
-        //                else
-        //                {
-        //                    row.Append('.');
-        //                }
-        //            }
-        //            else
-        //            {
-        //                row.Append(' ');
-        //            }
-        //        }
-        //        else
-        //            row.Append('#');
-        //    }
-        //    Player.Debug(row.ToString());
-        //}
     }
 
     private Dictionary<Guid, Zone> InitializeZones(List<Pac> myPacs)
@@ -719,23 +716,28 @@ public class Pac: Position
        isBlocked = lastActionIsMove && this.x == visiblePac.x && this.y == visiblePac.y; 
     }
 
-    public List<Pac> VisiblePacs;
+    /// <summary>
+    /// Pac, distance to pac
+    /// </summary>
+    public List<(Pac, int)> VisiblePacs;
 
     public void UpdateVisibleEnemyPacs(Dictionary<int, Pac> enemyVisiblePacsById)
     {
-        VisiblePacs = new List<Pac>();
+        VisiblePacs = new List<(Pac, int)>();
         var currentCoord = this.Coord;
         var visibleEnemies = enemyVisiblePacsById.Values.ToList();
 
         foreach(var direction in new[] { Direction.East, Direction.North, Direction.South, Direction.West})
         {
+            var distance = 0;
             while(Map.Cells[currentCoord].Neighbors.TryGetValue(direction, out var newCell))
             {
+                distance++;
                 currentCoord = newCell.Coord;
                 var visibleEnemy = visibleEnemies.SingleOrDefault(p => p.Coord == currentCoord);
                 if (visibleEnemy != null)
                 {
-                    VisiblePacs.Add(visibleEnemy);
+                    VisiblePacs.Add((visibleEnemy, distance));
                 }
             }
         }
@@ -750,6 +752,7 @@ public class Pac: Position
         this.x = cell.x;
         this.y = cell.y;
 
+        Map.Cells[this.Coord].PelletValue = 0;
     }
 
     public void SwitchToType(string newType)
@@ -891,6 +894,8 @@ public class Player
             {
                 var pacState = Console.ReadLine();
 
+                Player.Debug(pacState);
+
                 inputs = pacState.Split(' ');
                 int pacId = int.Parse(inputs[0]); // pac number (unique within a team)
                 bool mine = inputs[1] != "0"; // true if this pac is yours
@@ -901,16 +906,17 @@ public class Player
                 int abilityCooldown = int.Parse(inputs[6]); // unused in wood leagues
 
                 var pac = new Pac(pacId, mine, x, y, typeId, speedTurnsLeft, abilityCooldown);
-                
-                if (mine)
-                {
-                    myPacs.Add(pac.pacId, pac);
 
-                    Player.Debug(pacState);
-                }
-                else
+                if (pac.IsDead == false)
                 {
-                    enemyPacs.Add(pac.pacId, pac);
+                    if (mine)
+                    {
+                        myPacs.Add(pac.pacId, pac);
+                    }
+                    else
+                    {
+                        enemyPacs.Add(pac.pacId, pac);
+                    }
                 }
             }
 
@@ -967,6 +973,20 @@ public static class TypeAnalyzer
     public const string ROCK = "ROCK";
     public const string PAPER = "PAPER";
     public const string SCISSORS = "SCISSORS";
+
+    public static string GetStrongerType(string type)
+    {
+        switch(type)
+        {
+            case ROCK:
+                return PAPER;
+            case PAPER:
+                return SCISSORS;
+            case SCISSORS:
+                return ROCK;
+        }
+        throw new NotSupportedException();
+    }
 
     /// <summary>
     /// return signednumber: myType - enemyType
